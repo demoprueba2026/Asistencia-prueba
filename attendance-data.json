@@ -1,0 +1,69 @@
+{
+  "students": {
+    "student-1780374454422": {
+      "id": "student-1780374454422",
+      "name": "Cesar Jimenez",
+      "email": "cesargjg02@gmail.com",
+      "phone": "",
+      "year": 2,
+      "attendance": {
+        "castellano": {
+          "status": "asistente",
+          "label": "Castellano"
+        },
+        "matematicas": {
+          "status": "asistente",
+          "label": "Matemáticas"
+        },
+        "ingles": {
+          "status": "inasistente",
+          "label": "Inglés"
+        },
+        "educacion-fisica": {
+          "status": "asistente",
+          "label": "Educación Física"
+        },
+        "arte-patrimonio": {
+          "status": "asistente",
+          "label": "Arte y Patrimonio"
+        },
+        "ciencias-naturales": {
+          "status": "asistente",
+          "label": "Ciencias Naturales"
+        },
+        "ghc": {
+          "status": "inasistente",
+          "label": "GHC"
+        },
+        "orientacion-convivencia": {
+          "status": "asistente",
+          "label": "Orientación y Convivencia"
+        },
+        "crp": {
+          "status": "asistente",
+          "label": "CRP"
+        }
+      }
+    },
+    "arianny-1": {
+      "id": "arianny-1",
+      "name": "Arianny Suarez",
+      "email": "arianny@example.com",
+      "phone": "04125486575",
+      "year": 1,
+      "attendance": {
+        "matematicas": {
+          "status": "inasistente",
+          "label": "Matemáticas"
+        }
+      },
+      "cedula": "",
+      "attendanceByDate": {
+        "2026-08-28": {
+          "matematicas": "inasistente"
+        }
+      }
+    }
+  },
+  "lastDailyEmailSentDate": "2026-09-22"
+}

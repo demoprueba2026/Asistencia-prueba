@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "api/**/*.js", "use": "@vercel/node" },
+    { "src": "**/*", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1.js" },
+    { "handle": "filesystem" },
+    { "src": "/portal-estudiantes.html/(.*)", "dest": "/portal-estudiantes.html" },
+    { "src": "/(.*)", "dest": "/index.html" }  ],
+
+  
+  "crons": [
+    {
+      "path": "/api/cron-daily-emails",
+      "schedule": "0 16 * * *"
+    }
+  ]
+}

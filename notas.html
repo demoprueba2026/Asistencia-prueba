@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cargar notas - U.E.P Instituto Libertad</title>
+  <link rel="icon" type="image/png" href="sello.png">
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Calibri, Arial, sans-serif;
+      color: #172033;
+      background: #edf2f8;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px; }
+    button, input, select { font: inherit; }
+    .page { max-width: 1180px; margin: 0 auto; }
+    .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; }
+    .toolbar a, .save-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 9px 16px;
+      border: 0;
+      border-radius: 8px;
+      background: #1668b2;
+      color: #fff;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .toolbar a { background: #fff; color: #1f3554; border: 1px solid #d5deea; }
+    .boletin {
+      background: #fff;
+      border: 1px solid #d6deea;
+      box-shadow: 0 12px 32px rgba(25, 43, 71, .12);
+      padding: clamp(18px, 4vw, 38px);
+    }
+    .school-header {
+      display: grid;
+      grid-template-columns: 160px 1fr 140px;
+      align-items: center;
+      gap: 18px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #26364c;
+      text-align: center;
+      font-size: .9rem;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+    .school-header img { display: block; width: 100%; max-height: 140px; object-fit: contain; }
+    .school-header .seal { max-height: 130px; }
+    .school-header h1 { margin: 10px 0 0; font-size: 1.3rem; }
+    .intro { margin: 22px 0; }
+    .intro h2 { margin: 0 0 6px; font-size: 1.5rem; }
+    .intro p { margin: 0; color: #4c5b70; }
+    .filters {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(150px, 1fr));
+      gap: 16px;
+      padding: 18px;
+      background: #f3f6fa;
+      border: 1px solid #dce4ef;
+      border-radius: 10px;
+    }
+    .filters label { display: grid; gap: 7px; font-weight: 700; }
+    .filters select, .search input, .grade-input, .earned-points-input, .activity-name-input, .activity-weight-input {
+      width: 100%;
+      min-height: 42px;
+      padding: 8px 10px;
+      border: 1px solid #c8d2e0;
+      border-radius: 7px;
+      background: #fff;
+      color: #172033;
+    }
+    .list-heading { display: flex; justify-content: space-between; align-items: end; gap: 16px; margin: 24px 0 12px; }
+    .list-heading h2 { margin: 0; font-size: 1.2rem; }
+    .list-heading p { margin: 4px 0 0; color: #64748b; }
+    .search { width: min(100%, 360px); }
+    .search label { display: block; margin-bottom: 6px; font-weight: 700; }
+    .assessment-editor { margin-top: 18px; padding: 18px; background: #f3f6fa; border: 1px solid #dce4ef; border-radius: 10px; }
+    .assessment-editor-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .assessment-editor-heading h3 { margin: 0; font-size: 1.05rem; }
+    .assessment-list { display: grid; gap: 10px; }
+    .assessment-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 12px; padding: 12px; background: #fff; border: 1px solid #dce3ec; border-radius: 8px; }
+    .assessment-fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+    .assessment-field { display: grid; align-content: start; gap: 6px; min-width: 0; padding: 10px; border: 1px solid #dce3ec; border-radius: 8px; background: #f8fafc; font-weight: 700; }
+    .assessment-field-label { color: #4c5b70; font-size: .85rem; }
+    .assessment-points { color: #4c5b70; font-size: .82rem; font-weight: 400; }
+    .activity-name-input, .activity-weight-input { min-width: 0; }
+    .assessment-total { margin: 12px 0 0; color: #4c5b70; font-weight: 700; }
+    .assessment-total.error { color: #b42318; }
+    .add-activity-button, .remove-activity-button { min-height: 40px; padding: 8px 12px; border: 1px solid #c8d2e0; border-radius: 7px; background: #fff; color: #1f3554; font-weight: 700; cursor: pointer; }
+    .remove-activity-button { color: #b42318; }
+    .table-scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px 14px; border-bottom: 1px solid #dce3ec; text-align: left; }
+    th { background: #e8edf4; color: #26364c; }
+    td:nth-child(1), th:nth-child(1) { width: 90px; text-align: center; }
+    td:last-child, th:last-child { width: 190px; text-align: center; }
+    .student-name { font-weight: 700; }
+    .grade-input, .earned-points-input { max-width: 110px; text-align: center; font-weight: 700; }
+    .grade-input:focus, .earned-points-input:focus, .activity-name-input:focus, .activity-weight-input:focus, .filters select:focus, .search input:focus { outline: 2px solid #93c5fd; border-color: #2563eb; }
+    .assessment-column { min-width: 150px; text-align: center; }
+    .assessment-weight-column, .assessment-weight-value { min-width: 135px; text-align: center; }
+    .calculated-grade { font-weight: 700; }
+    .final-grade-values { display: flex; justify-content: center; gap: 6px; }
+    .final-grade-value { display: grid; gap: 2px; min-width: 68px; padding: 5px 7px; border: 1px solid #d2dbe7; border-radius: 6px; background: #f8fafc; }
+    .final-grade-value > span { color: #64748b; font-size: .68rem; font-weight: 400; }
+    .final-grade-exact { color: #1f3554; }
+    .final-grade-rounded { border-color: #b7d2f0; background: #edf5ff; color: #14569a; }
+    .grade-summary { display: grid; grid-template-columns: repeat(4, minmax(130px, 1fr)); gap: 12px; margin-top: 16px; }
+    .grade-summary-item { display: grid; gap: 4px; padding: 12px 14px; border: 1px solid #dce3ec; border-radius: 8px; background: #f8fafc; }
+    .grade-summary-item span { color: #4c5b70; font-size: .9rem; }
+    .grade-summary-item strong { font-size: 1.25rem; }
+    .actions { display: flex; justify-content: flex-end; align-items: center; gap: 14px; margin-top: 18px; }
+    .save-button:disabled { opacity: .6; cursor: wait; }
+    .status { min-height: 24px; margin-top: 14px; font-weight: 700; }
+    .status.error { color: #b42318; }
+    .status.success { color: #177245; }
+    .empty { padding: 26px; color: #64748b; text-align: center; }
+
+    @media (max-width: 680px) {
+      body { padding: 12px; }
+      .toolbar { align-items: stretch; }
+      .toolbar a { white-space: nowrap; }
+      .school-header { grid-template-columns: 88px 1fr 76px; gap: 6px; font-size: .68rem; }
+      .school-header img { max-height: 88px; }
+      .school-header .seal { max-height: 82px; }
+      .school-header h1 { font-size: 1rem; }
+      .filters { grid-template-columns: 1fr; }
+      .assessment-editor-heading { align-items: stretch; flex-direction: column; }
+      .assessment-item { grid-template-columns: 1fr; }
+      .list-heading { align-items: stretch; flex-direction: column; }
+      .search { width: 100%; }
+      .grade-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      th, td { padding: 10px 8px; }
+      .table-scroll { overflow: visible; }
+      table { display: block; }
+      thead { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+      tbody { display: grid; gap: 12px; }
+      tbody tr { display: grid; border: 1px solid #dce3ec; border-radius: 8px; overflow: hidden; }
+      tbody td { display: grid; grid-template-columns: minmax(120px, 38%) minmax(0, 1fr); align-items: center; gap: 8px; padding: 10px 12px; }
+      tbody td::before { content: attr(data-label); color: #26364c; font-weight: 700; text-align: left; }
+      tbody td:nth-child(1), tbody td:last-child { width: auto; text-align: left; }
+      .final-grade-values { justify-content: flex-start; }
+      tbody td.empty { display: block; text-align: center; }
+      tbody td.empty::before { content: none; }
+      .grade-input, .earned-points-input { width: 100%; }
+      .actions { align-items: stretch; flex-direction: column; }
+      .save-button { width: 100%; }
+    }
+  </style>
+  <script src="notas.js" defer></script>
+</head>
+<body>
+  <main class="page">
+    <nav class="toolbar" aria-label="Navegación">
+      <a href="registro.html#registro-asistencia">← Volver al sistema</a>
+      <strong id="teacherName"></strong>
+    </nav>
+
+    <section class="boletin" aria-labelledby="pageTitle">
+      <header class="school-header">
+        <img src="venezuela.png" alt="Ministerio de Educación">
+        <div>
+          REPÚBLICA BOLIVARIANA DE VENEZUELA<br>
+          MINISTERIO DEL PODER POPULAR PARA LA EDUCACIÓN<br>
+          UNIDAD EDUCATIVA PRIVADA INSTITUTO LIBERTAD<br>
+          CÓDIGO: PD02631519
+          <h1 id="pageTitle">MÓDULO DE CARGA DE NOTAS</h1>
+          AÑO ESCOLAR 2026-2027
+        </div>
+        <img class="seal" src="sello-instituto-libertad.jpg" alt="Sello Instituto Libertad">
+      </header>
+
+      <div class="intro">
+        <h2>Notas por estudiante</h2>
+        <p id="periodInstructions">Selecciona el curso, la materia y el período. En cada actividad registra la nota de 1 a 20 y, en el cuadro blanco contiguo, el aporte en puntos (hasta el máximo indicado por su porcentaje). La nota del lapso suma esos aportes sobre 20.</p>
+      </div>
+
+      <div class="filters">
+        <label for="yearSelect">Año escolar
+          <select id="yearSelect"></select>
+        </label>
+        <label for="subjectSelect">Materia
+          <select id="subjectSelect"></select>
+        </label>
+        <label for="periodSelect">Período
+          <select id="periodSelect">
+            <option value="1er">1er lapso</option>
+            <option value="2do">2do lapso</option>
+            <option value="3er">3er lapso</option>
+            <option value="Final">Final</option>
+          </select>
+        </label>
+      </div>
+
+      <section class="assessment-editor" aria-labelledby="assessmentHeading">
+        <div class="assessment-editor-heading">
+          <h3 id="assessmentHeading">Actividades y porcentajes del lapso</h3>
+          <button id="addActivity" class="add-activity-button" type="button">Agregar actividad</button>
+        </div>
+        <div id="activityList" class="assessment-list"></div>
+        <p id="assessmentTotal" class="assessment-total" aria-live="polite"></p>
+      </section>
+
+      <div class="list-heading">
+        <div>
+          <h2 id="listTitle">Lista de estudiantes</h2>
+          <p id="studentCount">Cargando estudiantes...</p>
+        </div>
+        <div class="search">
+          <label for="studentSearch">Buscar estudiante</label>
+          <input id="studentSearch" type="search" placeholder="Escribe un nombre...">
+        </div>
+      </div>
+
+      <div class="table-scroll">
+        <table>
+          <thead id="studentsHead">
+            <tr>
+              <th scope="col">N.º de lista</th>
+              <th scope="col">Nombre del estudiante</th>
+              <th class="assessment-column" scope="col">Actividad (nota /20)</th>
+              <th class="assessment-weight-column" scope="col">Puntos obtenidos</th>
+              <th id="gradeHeading" scope="col">Nota exacta y redondeada</th>
+            </tr>
+          </thead>
+          <tbody id="studentsBody">
+            <tr><td class="empty" colspan="5">Cargando estudiantes...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <section class="grade-summary" aria-label="Resumen de notas de la nómina" aria-live="polite">
+        <div class="grade-summary-item"><span>Estudiantes del año</span><strong id="gradeSummaryStudents">0</strong></div>
+        <div class="grade-summary-item"><span>Aprobados (10 o más)</span><strong id="gradeSummaryPassed">0</strong></div>
+        <div class="grade-summary-item"><span>Aplazados (menos de 10)</span><strong id="gradeSummaryFailed">0</strong></div>
+        <div class="grade-summary-item"><span>Sin nota</span><strong id="gradeSummaryPending">0</strong></div>
+      </section>
+
+      <div class="actions">
+        <button id="saveGrades" class="save-button" type="button">Guardar notas</button>
+      </div>
+      <p id="statusMessage" class="status" role="status" aria-live="polite"></p>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard de Estadísticas - Solo Administrador</title>
+  <link rel="icon" type="image/png" href="sello.png" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --primary: #007bff;
+      --success: #28a745;
+      --danger: #dc3545;
+      --warning: #ffc107;
+      --dark: #343a40;
+      --light: #f8f9fa;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #eef2f5;
+      color: #333;
+    }
+    .hidden { display: none !important; }
+    
+    .dashboard-container { max-width: 1200px; margin: auto; }
+    .header-panel { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    
+    .card {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      margin-bottom: 20px;
+    }
+    
+    .btn {
+      padding: 10px 16px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.3s;
+    }
+    .btn:hover { background: #0056b3; }
+    .btn-secondary {
+      background: #6c757d;
+      padding: 6px 12px;
+      font-size: 13px;
+    }
+    .btn-secondary:hover { background: #5a6268; }
+
+    .filters-container { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-end; }
+    .filter-group { display: flex; flex-direction: column; gap: 5px; }
+    .filters select, .filters input[type="date"], .search-input { 
+      padding: 8px 10px; 
+      border-radius: 6px; 
+      border: 1px solid #ccc; 
+      font-size: 14px; 
+      min-width: 150px;
+      box-sizing: border-box;
+    }
+    .search-input { width: 100%; max-width: 300px; }
+
+    .quick-ranges { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    .kpi-card {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      text-align: center;
+      border-left: 5px solid var(--primary);
+    }
+    .kpi-card h3 { margin: 0 0 10px 0; font-size: 14px; color: #666; text-transform: uppercase; }
+    .kpi-card .value { font-size: 32px; font-weight: bold; color: var(--dark); }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 20px;
+    }
+    .chart-container { position: relative; height: 300px; width: 100%; }
+
+    .table-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+    th { background-color: var(--light); font-weight: bold; }
+    tr:hover { background-color: #f1f1f1; }
+    
+    @media (max-width: 768px) {
+      .charts-grid { grid-template-columns: 1fr; }
+      .table-header { flex-direction: column; align-items: stretch; }
+      .search-input { max-width: 100%; }
+    }
+
+    @media (max-width: 600px) {
+      body { padding: 10px; overflow-x: hidden; }
+      .dashboard-container { width: 100%; }
+      .header-panel { flex-direction: column; align-items: stretch; gap: 12px; }
+      .header-panel .btn { width: 100%; }
+      .card { padding: 14px; }
+      .filters-container { flex-direction: column; align-items: stretch; gap: 14px; }
+      .filter-group { width: 100%; }
+      .filters select, .filters input[type="date"], .search-input { width: 100%; min-width: 0; }
+      .quick-ranges { display: grid; grid-template-columns: repeat(2, 1fr); }
+      .quick-ranges .btn { width: 100%; }
+      .kpi-grid { grid-template-columns: 1fr; gap: 12px; }
+      .kpi-card { padding: 16px; }
+      .kpi-card .value { font-size: 28px; }
+      .charts-grid { gap: 12px; }
+      .chart-container { height: 240px; }
+      .table-header { align-items: stretch; }
+      .table-header h3 { font-size: 1.1rem; }
+      .card > div[style*="overflow-x"] { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      table { min-width: 620px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="accessDenied" class="card hidden" style="max-width: 500px; text-align: center; margin: 40px auto;">
+    <h2 style="color: var(--danger);">Acceso Restringido</h2>
+    <p>Lo sentimos, esta sección es exclusiva para la Dirección Académica.</p>
+    <button class="btn" onclick="salirDeReportes()">Volver al Panel de Registro de Asistencia</button>
+  </div>
+
+  <div id="statsContent" class="dashboard-container hidden">
+    
+    <div class="header-panel">
+      <div>
+        <h2 style="margin: 0;">Panel de Control de Asistencia</h2>
+        <p style="margin: 5px 0 0 0; color: #666;">Bienvenido/a, <strong><span id="adminName"></span></strong></p>
+      </div>
+      <button id="reportExitButton" class="btn" onclick="salirDeReportes()">Volver al Panel de Registro de Asistencia</button>
+    </div>
+
+    <!-- Filtros por Rango de Fechas y Parámetros -->
+    <div class="card filters">
+      <div class="filters-container">
+        
+        <!-- Rango de Fechas -->
+        <div class="filter-group">
+          <label><strong>Rango de Fechas:</strong></label>
+          <div style="display: flex; gap: 5px; align-items: center;">
+            <input type="date" id="startDateFilter" onchange="actualizarDashboard()" title="Fecha inicial">
+            <span>a</span>
+            <input type="date" id="endDateFilter" onchange="actualizarDashboard()" title="Fecha final">
+          </div>
+          <!-- Botones Rápidos -->
+          <div class="quick-ranges">
+            <button type="button" class="btn btn-secondary" onclick="setQuickRange('today')">Hoy</button>
+            <button type="button" class="btn btn-secondary" onclick="setQuickRange('week')">Esta Semana</button>
+            <button type="button" class="btn btn-secondary" onclick="setQuickRange('month')">Este Mes</button>
+            <button type="button" class="btn btn-secondary" onclick="setQuickRange('all')">Ver Todo</button>
+          </div>
+        </div>
+
+        <!-- Filtro por Año -->
+        <div class="filter-group">
+          <label for="yearFilter"><strong>Año Académico:</strong></label>
+          <select id="yearFilter" onchange="actualizarFiltroMaterias()">
+            <option value="general">General (Todos los Años)</option>
+            <option value="1">1° Año</option>
+            <option value="2">2° Año</option>
+            <option value="3">3° Año</option>
+            <option value="4">4° Año</option>
+            <option value="5">5° Año</option>
+          </select>
+        </div>
+        
+        <!-- Filtro por Materia -->
+        <div class="filter-group">
+          <label for="subjectFilter"><strong>Materia:</strong></label>
+          <select id="subjectFilter" onchange="actualizarDashboard()">
+            <option value="general">Todas las Materias</option>
+          </select>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-grid">
+      <div class="kpi-card" style="border-left-color: var(--primary);">
+        <h3>Total Estudiantes Evaluados</h3>
+        <div class="value" id="kpiTotalEstudiantes">0</div>
+      </div>
+      <div class="kpi-card" style="border-left-color: var(--success);">
+        <h3>Tasa de Asistencia</h3>
+        <div class="value" id="kpiTasaAsistencia">0%</div>
+      </div>
+      <div class="kpi-card" style="border-left-color: var(--danger);">
+        <h3>Tasa de Inasistencia</h3>
+        <div class="value" id="kpiTotalFaltas">0%</div>
+      </div>
+    </div>
+
+    <!-- Gráficos -->
+    <div class="charts-grid">
+      <div class="card">
+        <h3 style="margin-top: 0; margin-bottom: 10px;">Proporción Seleccionada</h3>
+        <div style="display: flex; justify-content: space-around; margin-bottom: 15px; font-weight: bold; font-size: 15px;">
+          <span style="color: var(--success);">Asistencias: <span id="numAsistencias">0</span></span>
+          <span style="color: var(--danger);">Inasistencias: <span id="numInasistencias">0</span></span>
+        </div>
+        <div class="chart-container">
+          <canvas id="graficaGeneral"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="margin-top: 0;">Top 5: Alumnos con más inasistencias</h3>
+        <div class="chart-container">
+          <canvas id="graficaTopFaltas"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla y Buscador -->
+    <div class="card">
+      <div class="table-header">
+        <h3 style="margin: 0;">Seguimiento Individual</h3>
+        <input 
+          type="text" 
+          id="studentSearchInput" 
+          class="search-input" 
+          placeholder="🔍 Buscar por estudiante..." 
+          oninput="filtrarTabla()"
+        >
+      </div>
+      
+      <div style="overflow-x: auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Estudiante</th>
+              <th>Representante (Teléfono)</th>
+              <th>Asistencias</th>
+              <th>Inasistencias</th>
+              <th>Estado (% Faltas)</th>
+            </tr>
+          </thead>
+          <tbody id="tablaDetallesBody">
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    let chartGeneral = null;
+    let chartTopFaltas = null;
+    let listaEstudiantesActual = [];
+
+    const SUBJECTS_BY_YEAR = {
+      1: [{ id: 'matematicas', label: 'Matemáticas' }, { id: 'castellano', label: 'Castellano' }, { id: 'ingles', label: 'Inglés' }, { id: 'frances', label: 'Francés' }, { id: 'educacion-fisica', label: 'Educación Física' }, { id: 'arte-patrimonio', label: 'Arte y Patrimonio' }, { id: 'ciencias-naturales', label: 'Ciencias Naturales' }, { id: 'ghc', label: 'GHC' }, { id: 'orientacion-convivencia', label: 'Orientación y Convivencia' }, { id: 'crp', label: 'CRP' }],
+      2: [{ id: 'matematicas', label: 'Matemáticas' }, { id: 'castellano', label: 'Castellano' }, { id: 'ingles', label: 'Inglés' }, { id: 'frances', label: 'Francés' }, { id: 'educacion-fisica', label: 'Educación Física' }, { id: 'arte-patrimonio', label: 'Arte y Patrimonio' }, { id: 'ciencias-naturales', label: 'Ciencias Naturales' }, { id: 'ghc', label: 'GHC' }, { id: 'orientacion-convivencia', label: 'Orientación y Convivencia' }, { id: 'crp', label: 'CRP' }],
+      3: [{ id: 'castellano', label: 'Castellano' }, { id: 'ingles', label: 'Inglés' }, { id: 'matematica', label: 'Matemática' }, { id: 'educacion-fisica', label: 'Educación Física' }, { id: 'fisica', label: 'Física' }, { id: 'quimica', label: 'Química' }, { id: 'biologia', label: 'Biología' }, { id: 'ghc', label: 'GHC' }, { id: 'orientacion-convivencia', label: 'Orientación y Convivencia' }, { id: 'frances', label: 'Francés' }, { id: 'crp', label: 'CRP' }],
+      4: [{ id: 'castellano', label: 'Castellano' }, { id: 'ingles', label: 'Inglés' }, { id: 'matematica', label: 'Matemática' }, { id: 'educacion-fisica', label: 'Educación Física' }, { id: 'fisica', label: 'Física' }, { id: 'quimica', label: 'Química' }, { id: 'biologia', label: 'Biología' }, { id: 'ghc', label: 'GHC' }, { id: 'formacion-soberania', label: 'Formación para la Soberanía' }, { id: 'orientacion-convivencia', label: 'Orientación y Convivencia' }, { id: 'frances', label: 'Francés' }],
+      5: [{ id: 'castellano', label: 'Castellano' }, { id: 'ingles', label: 'Inglés' }, { id: 'matematica', label: 'Matemática' }, { id: 'educacion-fisica', label: 'Educación Física' }, { id: 'fisica', label: 'Física' }, { id: 'quimica', label: 'Química' }, { id: 'biologia', label: 'Biología' }, { id: 'ciencias-tierra', label: 'Ciencias de la Tierra' }, { id: 'ghc', label: 'GHC' }, { id: 'frances', label: 'Francés' }, { id: 'formacion-soberania', label: 'Formación para la Soberanía' }, { id: 'orientacion-convivencia', label: 'Orientación y Convivencia' }, { id: 'crp', label: 'CRP' }],
+    };
+
+    const sessionUser = JSON.parse(sessionStorage.getItem('activeUser') || '{}');
+    const deletedStudentIds = new Set();
+    const estudianteEliminado = (student) => deletedStudentIds.has(String(student.id));
+
+    const puedeVerReportes = sessionUser.name === 'Prof: Andy'
+      || sessionUser.name === 'Prof: Néstor'
+      || sessionUser.name === 'Prof: Nestor'
+      || sessionUser.name === 'Prof: Patricia'
+      || sessionUser.name === 'Prof: Abrahan';
+
+    function salirDeReportes() {
+      if (sessionUser.soloReportes) {
+        sessionStorage.removeItem('activeUser');
+        window.location.replace('index.html');
+        return;
+      }
+      window.location.href = 'index.html#registro-asistencia';
+    }
+
+    if (puedeVerReportes) {
+      document.getElementById('statsContent').classList.remove('hidden');
+      document.getElementById('adminName').textContent = sessionUser.name;
+      if (sessionUser.soloReportes) {
+        document.getElementById('reportExitButton').textContent = 'Cerrar sesión';
+      }
+      actualizarFiltroMaterias();
+    } else {
+      document.getElementById('accessDenied').classList.remove('hidden');
+    }
+
+    // Lógica para rangos rápidos de fecha
+    function setQuickRange(type) {
+      const startInput = document.getElementById('startDateFilter');
+      const endInput = document.getElementById('endDateFilter');
+      const today = new Date();
+      
+      const formatDate = (date) => date.toISOString().split('T')[0];
+
+      if (type === 'today') {
+        const strDate = formatDate(today);
+        startInput.value = strDate;
+        endInput.value = strDate;
+      } else if (type === 'week') {
+        const firstDay = new Date(today.setDate(today.getDate() - today.getDay() + 1));
+        const lastDay = new Date(today.setDate(today.getDate() - today.getDay() + 7));
+        startInput.value = formatDate(firstDay);
+        endInput.value = formatDate(lastDay);
+      } else if (type === 'month') {
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        startInput.value = formatDate(firstDay);
+        endInput.value = formatDate(lastDay);
+      } else if (type === 'all') {
+        startInput.value = '';
+        endInput.value = '';
+      }
+      
+      actualizarDashboard();
+    }
+
+    function actualizarFiltroMaterias() {
+      const year = document.getElementById('yearFilter').value;
+      const subjectSelect = document.getElementById('subjectFilter');
+      
+      subjectSelect.innerHTML = '<option value="general">Todas las Materias</option>';
+      let materiasDisponibles = [];
+
+      if (year === 'general') {
+        const mapaMaterias = new Map();
+        for (let i = 1; i <= 5; i++) {
+          SUBJECTS_BY_YEAR[i].forEach(m => mapaMaterias.set(m.id, m.label));
+        }
+        mapaMaterias.forEach((label, id) => materiasDisponibles.push({ id, label }));
+      } else {
+        materiasDisponibles = SUBJECTS_BY_YEAR[year] || [];
+      }
+      
+      materiasDisponibles.forEach(materia => {
+        const option = document.createElement('option');
+        option.value = materia.id;
+        option.textContent = materia.label;
+        subjectSelect.appendChild(option);
+      });
+      
+      actualizarDashboard();
+    }
+
+    function actualizarDashboard() {
+      const selectedYear = document.getElementById('yearFilter').value;
+      const selectedSubject = document.getElementById('subjectFilter').value;
+      const startDate = document.getElementById('startDateFilter').value;
+      const endDate = document.getElementById('endDateFilter').value;
+
+      fetch('/api/students')
+        .then(response => response.ok ? response.json() : [])
+        .then(data => {
+          const rows = Array.isArray(data) ? data : [];
+          let estudiantes = [];
+
+          if (selectedYear === 'general') {
+            for (let i = 1; i <= 5; i++) {
+              const alumnosDelAno = rows
+                .filter(e => Number(e.year) === i)
+                .filter(e => !estudianteEliminado(e))
+                .map(e => ({ ...e, calculatedYear: i }));
+              estudiantes = estudiantes.concat(alumnosDelAno);
+            }
+          } else {
+            estudiantes = rows
+              .filter(e => Number(e.year) === Number(selectedYear))
+              .filter(e => !estudianteEliminado(e))
+              .map(e => ({ ...e, calculatedYear: selectedYear }));
+          }
+
+          let totalAsistencias = 0;
+          let totalInasistencias = 0;
+          const rankingFaltas = [];
+
+          estudiantes.forEach(est => {
+            let asistenciasEstudiante = 0;
+            let inasistenciasEstudiante = 0;
+
+            const registrosCamelCase = est.attendanceByDate || {};
+            const registrosPorFecha = Object.keys(registrosCamelCase).length
+              ? registrosCamelCase
+              : est.attendance_by_date || registrosCamelCase;
+            Object.entries(registrosPorFecha).forEach(([fecha, materias]) => {
+              const fechaValida = (!startDate || fecha >= startDate) && (!endDate || fecha <= endDate);
+              if (!fechaValida) return;
+
+              Object.entries(materias || {}).forEach(([materia, estado]) => {
+                if (selectedSubject !== 'general' && materia !== selectedSubject) return;
+                const estadoGuardado = typeof estado === 'object' && estado !== null ? estado.status : estado;
+                if (estadoGuardado === 'asistente') { totalAsistencias++; asistenciasEstudiante++; }
+                if (estadoGuardado === 'inasistente') { totalInasistencias++; inasistenciasEstudiante++; }
+              });
+            });
+
+            const logs = est.attendanceHistory || est.attendanceLogs || [];
+
+            if (!Object.keys(registrosPorFecha).length && logs.length > 0) {
+              logs.forEach(log => {
+                const fechaValida = (!startDate || log.date >= startDate) && (!endDate || log.date <= endDate);
+                const materiaValida = (selectedSubject === 'general' || log.subject === selectedSubject);
+
+                if (fechaValida && materiaValida) {
+                  if (log.status === 'asistente') { totalAsistencias++; asistenciasEstudiante++; }
+                  if (log.status === 'inasistente') { totalInasistencias++; inasistenciasEstudiante++; }
+                }
+              });
+            } else if (!Object.keys(registrosPorFecha).length) {
+              const recordAsistencia = est.attendance || {};
+              const materiasARevisar = selectedSubject === 'general' ? Object.keys(recordAsistencia) : [selectedSubject];
+
+              materiasARevisar.forEach(materia => {
+                const registro = recordAsistencia[materia];
+                const estado = typeof registro === 'object' ? registro.status : registro;
+                const fechaReg = typeof registro === 'object' ? registro.date : null;
+
+                const fechaNormalizada = fechaReg ? String(fechaReg).slice(0, 10) : '';
+                const fechaEnRango = fechaNormalizada
+                  ? ((!startDate || fechaNormalizada >= startDate) && (!endDate || fechaNormalizada <= endDate))
+                  : (!startDate && !endDate);
+
+                if (fechaEnRango) {
+                  if (estado === 'asistente') { totalAsistencias++; asistenciasEstudiante++; }
+                  if (estado === 'inasistente') { totalInasistencias++; inasistenciasEstudiante++; }
+                }
+              });
+            }
+
+            const nombreMostrar = selectedYear === 'general'
+              ? `${est.name} (${est.calculatedYear}° Año)`
+              : est.name;
+
+            const totalRegistros = asistenciasEstudiante + inasistenciasEstudiante;
+
+            if (totalRegistros > 0) {
+              rankingFaltas.push({
+                nombre: nombreMostrar,
+                telefono: sessionUser.puedeVerDatosPersonales ? est.phone || 'No registrado' : 'Oculto',
+                asistencias: asistenciasEstudiante,
+                inasistencias: inasistenciasEstudiante,
+                totalRegistros,
+              });
+            }
+          });
+
+          const totalRegistrosGlobales = totalAsistencias + totalInasistencias;
+          const tasaAsistencia = totalRegistrosGlobales === 0 ? 0 : Math.round((totalAsistencias / totalRegistrosGlobales) * 100);
+          const tasaInasistencia = totalRegistrosGlobales === 0 ? 0 : Math.round((totalInasistencias / totalRegistrosGlobales) * 100);
+
+          document.getElementById('kpiTotalEstudiantes').textContent = rankingFaltas.length;
+          document.getElementById('kpiTasaAsistencia').textContent = `${tasaAsistencia}%`;
+          document.getElementById('kpiTotalFaltas').textContent = `${tasaInasistencia}%`;
+          document.getElementById('numAsistencias').textContent = totalAsistencias;
+          document.getElementById('numInasistencias').textContent = totalInasistencias;
+
+          const soloConFaltas = rankingFaltas.filter(est => est.inasistencias > 0);
+          const dataParaGrafico = soloConFaltas.sort((a, b) => b.inasistencias - a.inasistencias);
+          const top5 = dataParaGrafico.slice(0, 5);
+
+          renderizarGraficoGeneral(totalAsistencias, totalInasistencias);
+          renderizarGraficoTopFaltas(top5);
+
+          listaEstudiantesActual = rankingFaltas.sort((a, b) => b.inasistencias - a.inasistencias);
+          document.getElementById('studentSearchInput').value = '';
+          renderizarTabla(listaEstudiantesActual);
+        })
+        .catch(() => {
+          document.getElementById('kpiTotalEstudiantes').textContent = '0';
+          document.getElementById('kpiTasaAsistencia').textContent = '0%';
+          document.getElementById('kpiTotalFaltas').textContent = '0%';
+          document.getElementById('numAsistencias').textContent = '0';
+          document.getElementById('numInasistencias').textContent = '0';
+        });
+    }
+
+    function renderizarTabla(estudiantes) {
+      const tbody = document.getElementById('tablaDetallesBody');
+      tbody.innerHTML = '';
+      
+      if (estudiantes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#666; padding: 20px;">No se encontraron registros para las fechas y filtros seleccionados.</td></tr>';
+        return;
+      }
+
+      estudiantes.forEach(est => {
+        const porcentajeInasistencia = (est.inasistencias / est.totalRegistros) * 100;
+        let estadoHTML = '';
+        
+        if (porcentajeInasistencia >= 75) {
+          estadoHTML = '<span style="background: #dc3545; color: white; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">Alerta Máxima</span>';
+        } else if (porcentajeInasistencia >= 45) {
+          estadoHTML = '<span style="background: #ff7878; color: white; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">Alerta</span>';
+        } else if (porcentajeInasistencia >= 30) {
+          estadoHTML = '<span style="background: #ffc107; color: black; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">Observación</span>';
+        } else {
+          estadoHTML = '<span style="background: #28a745; color: white; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold;">Bien</span>';
+        }
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td><strong>${est.nombre}</strong></td>
+          <td>${est.telefono}</td>
+          <td style="color: var(--success); font-weight: bold;">${est.asistencias}</td>
+          <td style="color: var(--danger); font-weight: bold;">${est.inasistencias}</td>
+          <td>${estadoHTML} <span style="font-size:12px; color:#666; margin-left:5px; font-weight: bold;">${Math.round(porcentajeInasistencia)}%</span></td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    function filtrarTabla() {
+      const query = document.getElementById('studentSearchInput').value.toLowerCase().trim();
+      const estudiantesFiltrados = listaEstudiantesActual.filter(est => 
+        est.nombre.toLowerCase().includes(query)
+      );
+      renderizarTabla(estudiantesFiltrados);
+    }
+
+    function renderizarGraficoGeneral(asistencias, inasistencias) {
+      const ctx = document.getElementById('graficaGeneral').getContext('2d');
+      if (chartGeneral) chartGeneral.destroy();
+
+      if(asistencias === 0 && inasistencias === 0){
+        asistencias = 1;
+        inasistencias = 0;
+      }
+
+      chartGeneral = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Asistencias', 'Inasistencias'],
+          datasets: [{
+            data: [asistencias, inasistencias],
+            backgroundColor: ['#28a745', '#dc3545'],
+            borderWidth: 0
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '70%' }
+      });
+    }
+
+    function renderizarGraficoTopFaltas(top5Data) {
+      const ctx = document.getElementById('graficaTopFaltas').getContext('2d');
+      if (chartTopFaltas) chartTopFaltas.destroy();
+
+      const nombres = top5Data.map(est => est.nombre);
+      const faltas = top5Data.map(est => est.inasistencias);
+      
+      const coloresBarras = top5Data.map(est => {
+        const porcentajeInasistencia = (est.inasistencias / est.totalRegistros) * 100;
+        
+        if (porcentajeInasistencia >= 75) return '#dc3545';
+        if (porcentajeInasistencia >= 45) return '#ff7878';
+        if (porcentajeInasistencia >= 30) return '#ffc107';
+        return '#28a745';
+      });
+
+      chartTopFaltas = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: nombres,
+          datasets: [{
+            label: 'Número de Inasistencias',
+            data: faltas,
+            backgroundColor: coloresBarras,
+            borderRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: true, ticks: { stepSize: 1 } }
+          },
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+  </script>
+</body>
+</html>

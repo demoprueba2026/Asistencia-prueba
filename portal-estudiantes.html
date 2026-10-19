@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Boletín de Calificaciones - U.E. Instituto Libertad</title>
+  <link rel="icon" type="image/png" href="/sello.png" />
+   <!-- <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> -->
+   <!-- Librerías externas -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <style>
+    /* RESET & FUENTES BASE */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: rgba(10, 22, 48, 0.95);
+      font-family: Calibri, sans-serif;
+      color: #000000;
+    }
+
+    /* VISTA DE INICIO DE SESIÓN */
+    .landing-shell {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      padding: 20px 15px;
+      position: relative;
+    }
+
+    .landing-shell.hidden {
+      display: none !important;
+    }
+
+    .portal-loading {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #eef4ff;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .portal-loading.hidden {
+      display: none !important;
+    }
+
+    .landing-card {
+      position: relative;
+      width: 100%;
+      max-width: 960px;
+      padding: 36px;
+      border-radius: 36px;
+      background: rgba(10, 22, 48, 0.95);
+      border: 1px solid rgba(77, 168, 255, 0.16);
+      box-shadow: 0 36px 90px rgba(2, 6, 23, 0.7);
+      overflow: hidden;
+    }
+
+    .landing-card::before {
+      content: '';
+      position: absolute;
+      top: -40px;
+      right: -60px;
+      width: 260px;
+      height: 260px;
+      background: radial-gradient(circle, rgba(77, 168, 255, 0.22), transparent 55%);
+      filter: blur(12px);
+      pointer-events: none;
+    }
+
+    .landing-intro {
+      margin-bottom: 34px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .landing-intro h2 {
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 3rem);
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      text-align: center;
+      text-shadow: 0 10px 30px rgba(0,0,0,0.18);
+      color: #eef4ff;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #4da8ff;
+      font-weight: 800;
+      font-size: 0.88rem;
+    }
+
+    .landing-copy {
+      margin-bottom: 20px;
+      color: rgba(238, 244, 255, 0.8);
+      font-size: 1rem;
+      line-height: 1.6;
+      text-align: center;
+    }
+
+    .login-form {
+      margin-top: 20px;
+      max-width: 500px;
+      margin-inline: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      text-align: left;
+      position: relative;
+      z-index: 1;
+    }
+
+    .login-form .form-row {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .login-form label {
+      color: #eef4ff;
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .login-form input {
+      width: 100%;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      padding: 12px 14px;
+      color: #eef4ff;
+      font-size: 1rem;
+    }
+
+    .login-form input::placeholder {
+      color: rgba(238, 244, 255, 0.6);
+    }
+
+    .login-form input:focus {
+      outline: none;
+      border-color: rgba(77, 168, 255, 0.6);
+      box-shadow: 0 0 0 3px rgba(77, 168, 255, 0.12);
+    }
+
+    .login-form .form-actions {
+      display: flex;
+      justify-content: center;
+      margin-top: 8px;
+    }
+
+    button.primary {
+      min-width: 160px;
+      width: auto;
+      background: linear-gradient(135deg, #4da8ff, #3d7bff);
+      color: #eef4ff;
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 11px 18px;
+      border-radius: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.2s ease;
+    }
+
+    button.primary:hover {
+      transform: translateY(-1px);
+      background: linear-gradient(135deg, #3d7bff, #4da8ff);
+    }
+
+    .form-error {
+      color: #ff7d7d;
+      margin-top: 15px;
+      font-weight: bold;
+      text-align: center;
+      font-size: 0.95rem;
+    }
+
+    #boletaBloqueada {
+      color: #ffffff;
+      font-size: 1.15rem;
+    }
+
+    /* VISTA DEL BOLETÍN / DASHBOARD */
+    .app-shell {
+      background: rgba(10, 22, 48, 0.95);
+      padding: 20px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 980px;
+      margin: 0 auto;
+      border-radius: 18px;
+    }
+    .app-shell.hidden {
+      display: none !important;
+    }
+
+    .app-shell, .app-shell * {
+      color: #000000 !important;
+    }
+
+    .top-bar {
+      max-width: 100%;
+      width: 100%;
+      background: #ffffff;
+      padding: 12px 20px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    /* FORMATO HOJA EXCEL / OFICIAL */
+    .boletin-paper {
+      background: #ffffff;
+      max-width: 800px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 25px 30px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.3);
+      color: #000000;
+      font-family: Calibri, sans-serif;
+    }
+    .boletin-paper * {
+      color: #000000 !important;
+    }
+
+    /* ENCABEZADO CON LOGOS */
+    .header-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 15px;
+    }
+    .header-table td {
+      vertical-align: middle;
+    }
+    
+    .ministerio-logo-img {
+      width: 160px;
+      height: 90px;
+      display: block;
+    }
+
+    .sello-logo-img {
+      width: 140px;
+      height: 140px;
+      object-fit: contain;
+      display: block;
+      margin-left: auto;
+    }
+
+    .header-text {
+      text-align: center;
+      font-family: Arial, sans-serif;
+      font-size: 9pt;
+      font-weight: bold;
+      line-height: 1.25;
+      color: #000000;
+      text-transform: uppercase;
+    }
+
+    .header-title {
+      font-family: Arial, sans-serif;
+      font-size: 9pt;
+      font-weight: bold;
+      margin-top: 10px;
+      letter-spacing: 0.5px;
+    }
+
+    .header-sub {
+      font-family: Arial, sans-serif;
+      font-size: 9pt;
+      font-weight: bold;
+      margin-top: 2px;
+    }
+
+    /* DATOS DEL ESTUDIANTE */
+    .datos-estudiante-container {
+      width: 100%;
+      border-top: 1.5px solid #000;
+      border-bottom: 1.5px solid #000;
+      padding: 6px 0;
+      margin-bottom: 12px;
+      font-family: Calibri, sans-serif;
+      font-size: 11pt;
+      font-style: italic;
+      font-weight: bold;
+    }
+
+    .datos-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 3px;
+    }
+    .datos-row:last-child {
+      margin-bottom: 0;
+    }
+
+    /* TABLA PRINCIPAL DE NOTAS */
+    .tabla-notas {
+      width: 100%;
+      table-layout: fixed;
+      border-collapse: collapse;
+      border: 1.5px solid #000000;
+      font-size: 11pt;
+      text-align: center;
+      color: #000000;
+      font-family: Calibri, sans-serif;
+    }
+
+    .tabla-notas th, .tabla-notas td {
+      border: 1px solid #000000;
+      padding: 2px 4px;
+      height: 20px;
+      vertical-align: middle;
+    }
+
+    /* ENCABEZADOS DE TABLA EN ARIAL 11pt CON FONDO GRIS */
+    .tabla-notas thead th, .tabla-pendiente thead th {
+      font-family: Arial, sans-serif;
+      font-size: 11pt;
+      font-weight: bold;
+      font-style: italic;
+      background-color: #a6a6a6;
+      color: #000000;
+    }
+
+    .col-area {
+      text-align: left !important;
+      padding-left: 6px !important;
+      font-family: Calibri, sans-serif;
+      font-size: 11pt;
+      font-style: italic;
+      font-weight: bold;
+      width: 38%;
+    }
+
+    .tabla-notas tbody td {
+      font-family: Calibri, sans-serif;
+      font-size: 11pt;
+      font-weight: bold;
+      font-style: italic;
+    }
+
+    .row-promedio td, .row-seccion-header td {
+      background-color: #e0e0e0;
+      font-family: Calibri, sans-serif;
+      font-size: 11pt;
+      font-weight: bold;
+      font-style: italic;
+    }
+
+    .row-seccion-header td {
+      text-align: center;
+      text-transform: uppercase;
+      font-family: Arial, sans-serif;
+      font-size: 10pt;
+    }
+
+    /* MATERIA PENDIENTE */
+    .tabla-pendiente {
+      width: 58%;
+      border-collapse: collapse;
+      border: 1.5px solid #000;
+      font-size: 11pt;
+      text-align: center;
+      margin-top: 12px;
+      margin-bottom: 15px;
+      font-family: Calibri, sans-serif;
+      font-weight: bold;
+      font-style: italic;
+    }
+
+    .tabla-pendiente th, .tabla-pendiente td {
+      border: 1px solid #000;
+      padding: 2px 4px;
+    }
+
+    /* SECCIÓN DE GRÁFICOS */
+    .graficos-container {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      margin-top: 15px;
+      margin-bottom: 25px;
+    }
+
+    .grafico-box {
+      width: 32%;
+      text-align: center;
+    }
+
+    .grafico-box h4 {
+      font-family: Calibri, sans-serif;
+      font-size: 11pt;
+      font-style: italic;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .grafico-box canvas {
+      width: 100% !important;
+      height: 160px !important;
+    }
+
+    /* FIRMAS Y SELLO */
+    .firmas-container {
+      width: 100%;
+      margin-top: 40px;
+      border-collapse: collapse;
+      font-family: Calibri, sans-serif;
+      font-size: 11pt;
+      font-weight: bold;
+      font-style: italic;
+      text-align: center;
+    }
+
+    .firmas-container td {
+      vertical-align: bottom;
+      padding: 0 10px;
+    }
+
+    .linea-firma {
+      border-top: 1px solid #000;
+      width: 85%;
+      margin: 0 auto 5px auto;
+    }
+
+    .document-tabs {
+      width: 100%;
+      max-width: 800px;
+      display: flex;
+      gap: 8px;
+      margin: 0 auto 15px;
+      justify-content: center;
+    }
+
+    .document-tab {
+      flex: 1;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 11px 14px;
+      background: #e2e8f0;
+      color: #334155;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .document-tab.active {
+      background: #0284c7;
+      color: #ffffff;
+      border-color: #0284c7;
+    }
+
+    .document-panel.hidden {
+      display: none;
+    }
+
+    .recibo-paper {
+      position: relative;
+      overflow: hidden;
+      background: #ffffff;
+      max-width: 680px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 30px;
+      border: 1px solid #dbe3ec;
+      border-radius: 10px;
+      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.2);
+      color: #0f172a;
+      font-family: Calibri, sans-serif;
+    }
+
+    .recibo-paper::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 6px;
+      background: linear-gradient(90deg, #8f0000 0 48%, #16803b 48% 100%);
+    }
+
+    .recibo-heading {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding-bottom: 22px;
+      border-bottom: 1px solid #e2e8f0;
+      text-align: left;
+    }
+
+    .recibo-seal {
+      width: 92px;
+      height: 92px;
+      flex: 0 0 92px;
+      object-fit: contain;
+      border-radius: 50%;
+    }
+
+    .recibo-brand h1 {
+      margin: 0 0 5px;
+      color: #8f0000 !important;
+      font-size: 1.75rem;
+      letter-spacing: 0.02em;
+    }
+
+    .recibo-brand p { margin: 3px 0; color: #475569 !important; }
+
+    .recibo-title {
+      margin: 20px 0 0;
+      color: #0f172a !important;
+      font-size: 1rem;
+      letter-spacing: 0.16em;
+    }
+
+    .recibo-datos {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 24px;
+      margin: 22px 0;
+      padding: 16px;
+      border-left: 4px solid #16803b;
+      border-radius: 6px;
+      background: #f1f5f9;
+      color: #0f172a !important;
+    }
+
+    .recibo-datos strong { display: block; margin-bottom: 3px; color: #64748b !important; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .recibo-datos span { color: #0f172a !important; font-weight: 700; }
+    .recibo-table-wrap { width: 100%; overflow: hidden; border-radius: 6px; }
+    .recibo-table { display: table; width: 100% !important; min-width: 0 !important; max-width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; color: #0f172a !important; }
+    .recibo-table th { box-sizing: border-box; min-width: 0; padding: 11px 8px; background: #8f0000; color: #ffffff !important; font-size: 0.76rem; letter-spacing: 0.04em; text-align: left; text-transform: uppercase; white-space: nowrap; overflow: visible; }
+    .recibo-table th:nth-child(1), .recibo-table td:nth-child(1) { width: 28% !important; }
+    .recibo-table th:nth-child(2), .recibo-table td:nth-child(2) { width: 24% !important; }
+    .recibo-table th:nth-child(3), .recibo-table td:nth-child(3) { width: 22% !important; }
+    .recibo-table th:nth-child(4), .recibo-table td:nth-child(4) { width: 26% !important; }
+    .recibo-table th:first-child { border-radius: 6px 0 0 6px; }
+    .recibo-table th:last-child { border-radius: 0 6px 6px 0; text-align: right; }
+    .recibo-table td { padding: 13px 12px; border-bottom: 1px solid #e2e8f0; color: #0f172a !important; }
+    .recibo-table td:last-child { text-align: right; font-weight: 700; }
+    .recibo-amount { display: table-cell !important; width: 26% !important; min-width: 0; padding-right: 8px !important; color: #8f0000 !important; font-size: 0.95rem; font-weight: 800 !important; text-align: right !important; white-space: nowrap; visibility: visible !important; }
+    .recibo-total { display: flex; justify-content: space-between; align-items: center; margin: 20px 0 0; padding-top: 15px; border-top: 2px solid #0f172a; color: #0f172a !important; font-size: 1.05rem; }
+    .recibo-total strong { color: #8f0000 !important; font-size: 1.35rem; }
+
+    @media (max-width: 600px) {
+      .recibo-datos { grid-template-columns: 1fr; }
+      .recibo-paper { padding: 22px 16px; }
+      .recibo-heading { align-items: flex-start; gap: 12px; }
+      .recibo-seal { width: 72px; height: 72px; flex-basis: 72px; }
+      .recibo-brand h1 { font-size: 1.25rem; }
+      .recibo-brand p { font-size: 0.78rem; }
+      .recibo-table th, .recibo-table td { padding: 10px 5px; font-size: 0.76rem; }
+    }
+
+    @media (max-width: 700px) {
+      body { overflow-x: hidden; }
+      .app-shell { width: 100%; max-width: 100%; padding: 12px 8px; border-radius: 12px; }
+      .top-bar { flex-wrap: wrap; gap: 10px; padding: 10px 12px; }
+      .top-bar button { width: auto; margin-left: auto; }
+      .document-tabs { flex-wrap: wrap; }
+      .document-tab { min-width: 140px; }
+      .boletin-paper { padding: 16px 10px; overflow-x: auto; }
+      .header-table { min-width: 620px; }
+      .tabla-notas, .tabla-pendiente { min-width: 720px; }
+      .graficos-container { gap: 12px; overflow-x: auto; justify-content: flex-start; }
+      .grafico-box { flex: 0 0 31%; min-width: 150px; }
+      .firmas-container { min-width: 620px; }
+    }
+
+    @media (max-width: 420px) {
+      .top-bar { align-items: flex-start; }
+      .top-bar > div { width: 100%; }
+      .top-bar button { width: 100%; margin-left: 0; }
+      .document-tab { flex: 1 1 100%; min-width: 0; }
+      .recibo-heading { gap: 10px; }
+      .recibo-brand p { line-height: 1.3; }
+    }
+
+    @media (max-width: 700px) {
+      .landing-shell {
+        min-height: 100svh;
+        width: 100%;
+        padding: 16px 12px;
+        justify-content: center;
+      }
+      .landing-card {
+        width: 100%;
+        max-width: 520px;
+        padding: 28px 18px;
+        border-radius: 24px;
+      }
+      .landing-intro { margin-bottom: 26px; }
+      .landing-intro h2 { font-size: clamp(1.8rem, 8vw, 2.4rem); }
+      .landing-copy { font-size: 0.95rem; line-height: 1.5; }
+      .login-form { width: 100%; max-width: none; gap: 14px; }
+      .login-form input { min-height: 48px; font-size: 16px; }
+      .login-form .form-actions { margin-top: 4px; }
+      .login-form button.primary { width: 100%; min-height: 48px; }
+      .form-error { overflow-wrap: anywhere; }
+    }
+
+    @media (max-width: 380px) {
+      .landing-shell { padding: 12px 8px; }
+      .landing-card { padding: 24px 14px; border-radius: 20px; }
+      .eyebrow { font-size: 0.76rem; letter-spacing: 0.12em; }
+      .landing-intro h2 { font-size: 1.75rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="portalLoading" class="portal-loading hidden" role="status" aria-live="polite">Cargando datos del estudiante...</div>
+
+  <!-- VISTA DE INICIO DE SESIÓN -->
+  <div id="landingView" class="landing-shell">
+    <div class="landing-card">
+      <div class="landing-intro">
+        <span class="eyebrow">Portal Estudiantil</span>
+        <h2>Consulta tus Calificaciones</h2>
+        <p class="landing-copy">Ingresa tu cédula tal como está registrada en control de estudios.</p>
+      </div>
+
+      <form id="loginEstudianteForm" class="login-form">
+        <div class="form-row login-field">
+          <label for="estudianteCedula">Cédula</label>
+          <input type="text" id="estudianteCedula" placeholder="Ej. V-35859565" required />
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="primary">Entrar</button>
+        </div>
+      </form>
+
+      <p id="errorMensaje" class="form-error" style="display: none;"></p>
+    </div>
+  </div>
+
+  <!-- VISTA DEL DASHBOARD -->
+  <main id="mainView" class="app-shell hidden">
+    
+    <!-- Barra Superior de Control -->
+    <div class="top-bar">
+      <div>
+        <span style="font-size: 11pt; color: #333; font-weight: bold;">Estudiante: <span id="nombreAlumnoDisplay" style="color: #0284c7;"></span></span>
+      </div>
+      <button onclick="cerrarSesion()" style="background: #e2e8f0; color: #333; border: 1px solid #cbd5e1; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 10pt;">Cerrar Sesión</button>
+    </div>
+
+    <div class="document-tabs" role="tablist">
+      <button id="tabBoleta" class="document-tab active" onclick="mostrarDocumento('boleta')" role="tab">Boleta de calificaciones</button>
+      <button id="tabRecibo" class="document-tab" onclick="mostrarDocumento('recibo')" role="tab">Recibo de pago</button>
+    </div>
+
+    <!-- DOCUMENTO BOLETÍN IMPRESO -->
+    <div id="boletaPanel" class="document-panel">
+      <div id="boletaBloqueada" class="form-error" style="display: none; margin-bottom: 15px; color: #ffffff;">
+        ⚠️ Su boleta de calificaciones no ha sido autorizada por la institución.
+      </div>
+      <div class="boletin-paper">
+      
+      <!-- ENCABEZADO OFICIAL -->
+      <table class="header-table">
+        <tr>
+          <td style="width: 25%; text-align: left;">
+            <img class="ministerio-logo-img" src="/venezuela.png" alt="Ministerio de Educación" />
+          </td>
+          <td style="width: 50%;">
+            <div class="header-text">
+              REPÚBLICA BOLIVARIANA DE VENEZUELA<br>
+              MINISTERIO DEL PODER POPULAR PARA LA EDUCACIÓN<br>
+              UNIDAD EDUCATIVA INSTITUTO LIBERTAD<br>
+              CÓDIGO: PD02631519
+              <div class="header-title">BOLETÍN DE CALIFICACIONES</div>
+              <div id="anoEscolarDisplay" class="header-sub">AÑO ESCOLAR</div>
+            </div>
+          </td>
+          <td style="width: 25%; text-align: right;">
+            <img class="sello-logo-img" src="/sello-instituto-libertad.jpg" alt="Sello Instituto Libertad" />
+          </td>
+        </tr>
+      </table>
+
+      <!-- DATOS DEL ESTUDIANTE -->
+      <div class="datos-estudiante-container">
+        <div class="datos-row">
+          <span style="width: 45%;">Cédula: &nbsp;&nbsp;<span id="cedulaDisplay">V-35859565</span></span>
+          <span style="width: 30%;">Año: &nbsp;<span id="anoDisplay">1º</span></span>
+          <span style="width: 25%;">Sección: &nbsp;<span id="seccionDisplay">U</span></span>
+        </div>
+        <div class="datos-row">
+          <span>Apellidos y Nombres: &nbsp;&nbsp;&nbsp;&nbsp;<span id="nombreCompletoDisplay">SALAZAR CASTRO WILSHAW JEREMIAS</span></span>
+        </div>
+      </div>
+
+      <!-- TABLA PRINCIPAL DE CALIFICACIONES -->
+      <table class="tabla-notas">
+        <colgroup>
+          <col style="width: 36%;">
+          <col style="width: 6%;"><col style="width: 6%;"><col style="width: 6%;">
+          <col style="width: 7%;">
+          <col style="width: 5%;"><col style="width: 5%;"><col style="width: 5%;">
+          <col style="width: 6%;">
+          <col style="width: 6%;"><col style="width: 6%;"><col style="width: 6%;">
+        </colgroup>
+        <thead>
+          <tr>
+            <th rowspan="2" class="col-area" style="text-align: center !important;">Áreas de Formación</th>
+            <th colspan="3" style="width: 19%;">Lapso</th>
+            <th rowspan="2" style="width: 7%;">FINAL</th>
+            <th colspan="3" style="width: 18%;">% de Inasistencia</th>
+            <th rowspan="2" style="width: 6%;">Total</th>
+            <th colspan="3" style="width: 18%;">REVISIÓN</th>
+          </tr>
+          <tr>
+            <th style="width: 6.33%;">1er</th>
+            <th style="width: 6.33%;">2do</th>
+            <th style="width: 6.33%;">3er</th>
+            <th style="width: 6%;">1er</th>
+            <th style="width: 6%;">2do</th>
+            <th style="width: 6%;">3er</th>
+            <th style="width: 6%;">1º F</th>
+            <th style="width: 6%;">2º F</th>
+            <th style="width: 6%;">3º F</th>
+          </tr>
+        </thead>
+        <tbody id="tablaNotasBody">
+          <!-- Carga dinámica JS -->
+        </tbody>
+        <tfoot>
+          <!-- FILA DE PROMEDIO DEL ESTUDIANTE -->
+          <tr class="row-promedio">
+            <td style="text-align: right; padding-right: 8px; font-weight: bold; font-style: italic;">Promedio del Estudiante</td>
+            <td id="prom1er">-</td>
+            <td id="prom2do">-</td>
+            <td id="prom3er">-</td>
+            <td id="promFinal">-</td>
+            <td id="inas1er">0%</td>
+            <td id="inas2do">0%</td>
+            <td id="inas3er">0%</td>
+            <td id="inasTotal">0%</td>
+            <td colspan="3"></td>
+          </tr>
+          <!-- FILA SECCIÓN DE CREACIÓN Y RECREACIÓN -->
+          <tr class="row-seccion-header">
+            <td colspan="12">PARTICIPACIÓN EN GRUPO DE CREACIÓN, RECREACIÓN Y PRODUCCIÓN</td>
+          </tr>
+          <!-- FILA DE CRP / FRANCÉS -->
+          <tr id="filaCRP">
+            <td class="col-area" style="text-transform: uppercase;">FRANCÉS / CRP</td>
+            <td id="crp1er">C</td>
+            <td id="crp2do">C</td>
+            <td id="crp3er">D</td>
+            <td id="crpFinal">C</td>
+            <td id="crpInas1">0%</td>
+            <td id="crpInas2">0%</td>
+            <td id="crpInas3">0%</td>
+            <td id="crpInasTotal">0%</td>
+            <td></td>
+            <td></td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <!-- TABLA MATERIA PENDIENTE -->
+      <table class="tabla-pendiente">
+        <thead>
+          <tr>
+            <th style="width: 52%; text-align: center;">Materia Pendiente</th>
+            <th style="width: 12%;">M1</th>
+            <th style="width: 12%;">M2</th>
+            <th style="width: 12%;">M3</th>
+            <th style="width: 12%;">M4</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="text-align: center;">******</td>
+            <td>***</td>
+            <td>***</td>
+            <td>***</td>
+            <td>***</td>
+          </tr>
+          <tr>
+            <td style="text-align: center;">******</td>
+            <td>***</td>
+            <td>***</td>
+            <td>***</td>
+            <td>***</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- SECCIÓN DE GRÁFICOS DE RENDIMIENTO POR LAPSO -->
+      <div class="graficos-container">
+        <div class="grafico-box">
+          <h4>1er Lapso</h4>
+          <canvas id="chart1erLapso"></canvas>
+        </div>
+        <div class="grafico-box">
+          <h4>2do Lapso</h4>
+          <canvas id="chart2doLapso"></canvas>
+        </div>
+        <div class="grafico-box">
+          <h4>3er Lapso</h4>
+          <canvas id="chart3erLapso"></canvas>
+        </div>
+      </div>
+
+      <!-- SECCIoooooÓN DE FIRMAS Y SELLO -->
+      <table class="firmas-container">
+        <tr>
+          <td style="width: 38%;">
+            <div class="linea-firma"></div>
+            Dirección
+          </td>
+          <td style="width: 24%;">
+            Sello
+          </td>
+          <td style="width: 38%;">
+            <div class="linea-firma"></div>
+            Jefe Control de Estudio
+          </td>
+        </tr>
+      </table>
+
+      </div>
+      <button id="btnDescargarBoleta" class="primary" type="button" onclick="descargarBoletaPDF()" style="display: block; margin: 18px auto 0;">
+        Descargar boleta en PDF
+      </button>
+    </div>
+
+    <div id="reciboPanel" class="document-panel hidden">
+      <div class="recibo-paper">
+        <div class="recibo-heading">
+          <img class="recibo-seal" src="/sello-instituto-libertad.jpg" alt="Insignia del Instituto Libertad">
+          <div class="recibo-brand">
+            <h1>Instituto Libertad</h1>
+            <p><strong>Sede Petare</strong></p>
+            <p>Calle Federación, edificio 10, Baloa Petare</p>
+            <p>Municipio Sucre · institutolibertadsedepetare@gmail.com</p>
+            <p>RIF. V-00982909</p>
+          </div>
+        </div>
+        <h2 class="recibo-title">RECIBO DE PAGO</h2>
+        <div class="recibo-datos">
+          <div><strong>Nombre y apellido</strong><span id="reciboEstudianteNombre"></span></div>
+          <div><strong>Cédula</strong><span id="reciboEstudianteCedula"></span></div>
+          <div><strong>Año académico</strong><span id="reciboEstudianteAno"></span></div>
+        </div>
+        <div class="recibo-table-wrap">
+          <table class="recibo-table">
+            <colgroup><col style="width: 36%;"><col style="width: 24%;"><col style="width: 20%;"><col style="width: 20%;"></colgroup>
+            <thead><tr><th>Mes</th><th>Fecha</th><th>Abono</th><th>Monto (REF)</th></tr></thead>
+            <tbody id="reciboEstudiantePagosBody"></tbody>
+          </table>
+        </div>
+        <p class="recibo-total"><span>Total pagado</span><strong>$<span id="reciboEstudianteTotal">0.00</span></strong></p>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="/portal-estudiante.js"></script>
+</body>
+</html>
+
