@@ -81,6 +81,9 @@ end $$;
 -- ------------------------------------------------------------------------------
 create index if not exists idx_students_year_name on public.students (year, name asc);
 create index if not exists idx_students_cedula on public.students (cedula);
+create index if not exists idx_students_grades on public.students using gin (grades);
+create index if not exists idx_students_payments on public.students using gin (payments);
+create index if not exists idx_students_attendance on public.students using gin (attendance_by_date);
 create index if not exists idx_attendances_date on public.attendances (date);
 create index if not exists idx_attendances_date_email on public.attendances (date, email_sent_at);
 create index if not exists idx_attendances_student_id on public.attendances (student_id);
