@@ -1,9 +1,17 @@
 const nodemailer = require('nodemailer');
 
-const SUPABASE_URL = (process.env.SUPABASE_URL || '')
+const SUPABASE_URL = (
+  process.env.SUPABASE_URL ||
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  ''
+)
   .replace(/\/rest\/v1\/?$/, '')
   .replace(/\/$/, '');
-const SUPABASE_KEY = process.env.SUPABASE_KEY;
+const SUPABASE_KEY =
+  process.env.SUPABASE_KEY ||
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_ANON_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const GMAIL_USER = process.env.GMAIL_USER;
 const GMAIL_PASS = process.env.GMAIL_PASS;
 const EMAIL_FROM = process.env.EMAIL_FROM || GMAIL_USER;
@@ -97,6 +105,14 @@ const markAttendancesAsSent = async (attendances) => {
 const getToday = () => new Date().toISOString().slice(0, 10);
 
 module.exports = async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+
   if (!requireEnv(res)) return;
   if (req.method !== 'GET' && req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });

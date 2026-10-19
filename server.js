@@ -15,8 +15,17 @@ const ACCESS_TOKEN = process.env.WABA_TOKEN;
 const GMAIL_USER = process.env.GMAIL_USER;
 const GMAIL_PASS = process.env.GMAIL_PASS;
 const EMAIL_FROM = process.env.EMAIL_FROM || GMAIL_USER;
-const SUPABASE_URL = (process.env.SUPABASE_URL || '').replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
-const SUPABASE_KEY = process.env.SUPABASE_KEY;
+const SUPABASE_URL = (
+  process.env.SUPABASE_URL ||
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  ''
+).replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
+
+const SUPABASE_KEY =
+  process.env.SUPABASE_KEY ||
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_ANON_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const ATTENDANCE_FILE = path.join(__dirname, 'attendance-data.json');
 const IS_SUPABASE_CONFIGURED = Boolean(SUPABASE_URL && SUPABASE_KEY);
 
@@ -608,6 +617,15 @@ app.post('/api/send-daily-emails', async (req, res) => {
   } catch (error) {
     console.error('Error forzando envío diario:', error);
     res.status(500).json({ error: 'No se pudo ejecutar el envío diario.' });
+  }
+});
+
+app.all('/api/cron-daily-emails', async (req, res) => {
+  try {
+    return require('./cron-daily-emails')(req, res);
+  } catch (error) {
+    console.error('Error en cron-daily-emails:', error);
+    res.status(500).json({ error: 'Error ejecutando cron-daily-emails.' });
   }
 });
 
