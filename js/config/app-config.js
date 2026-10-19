@@ -10,9 +10,9 @@ console.log('DOM detectado:', {
 
 
 const TEACHERS = {
-  "Patricia Salinas": {
-    password: "Tita2026$$",
-    name: "Prof: Patricia",
+  "Prueba4": {
+    password: "Prueba4",
+    name: "Prof: sub director",
     allowedYears: [1, 2, 3, 4, 5],
     puedeAgregarEstudiantes: true,
     puedeVerDatosPersonales: true,
@@ -26,24 +26,24 @@ const TEACHERS = {
     puedeVerDatosPersonales: true,
     esAdmin: false
   },
-  "Sara Romero": {
-    password: "20330592",
+  "Prueba3": {
+    password: "Prueba3",
     name: "Administrador de Sistema",
     puedeVerDatosPersonales: true,
     soloAdmin: true
   },
-  "Nestor Pérez": {
-    password: "13557016",
-    name: "Prof: Néstor",
+  "Prueba1": {
+    password: "Prueba1",
+    name: "Prof: Admin",
     allowedYears: [1, 2, 3, 4, 5],
     puedeAgregarEstudiantes: true,
     esAdmin: true,
     puedeVerDatosPersonales: true,
     puedeGestionarBoletas: true
   },
-  "Andy Suárez": {
-    password: "14965485",
-    name: "Prof: Andy",
+  "Prueba2": {
+    password: "Prueba2",
+    name: "Prof: Control de esturdio",
     allowedYears: [1, 2, 3, 4, 5],
     puedeAgregarEstudiantes: true,
     puedeGestionarActividades: true,
