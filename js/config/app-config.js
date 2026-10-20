@@ -33,7 +33,7 @@ const TEACHERS = {
     soloAdmin: true
   },
   "David": {
-    password: ["prueba1", "David123", "david123", "admin123", "123456", "David", "david"],
+    password: "prueba1",
     name: "Prof: David",
     username: "david",
     allowedYears: [1, 2, 3, 4, 5],
