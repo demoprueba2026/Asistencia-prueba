@@ -375,7 +375,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 90px;
+  gap: -100px;
 }
 
 #mainView .header-top {
