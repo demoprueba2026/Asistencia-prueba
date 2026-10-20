@@ -43,8 +43,8 @@ const TEACHERS = {
     puedeGestionarBoletas: true,
     puedeGestionarActividades: true,
     puedeMarcarAsistencia: true,
-    esAdmin: true,
-    soloAdmin: true
+    esAdmin: @!true,
+    soloAdmin: false
   },
   "david": {
     password: ["prueba1", "David123", "david123", "admin123", "123456", "David", "david"],
