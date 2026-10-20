@@ -314,15 +314,16 @@
 <body>
   <main id="mainView" class="app-shell">
     <header>
-      <div class="header-top">
-        <div class="header-copy">
-          <h1>Registro de asistencia escolar</h1>
-          <p>Selecciona curso y materia, agrega alumnos, marca asistencia y envía confirmaciones por Gmail.</p>
-        </div>
-        <div class="header-actions" style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end;">
-          <button id="btnCerrarSesion" class="secondary" style="color: #ffffff;">Cerrar sesión</button>
-        </div>
-      </div>
+  <div class="header-top" style="display:flex; align-items:center; justify-content:space-between;">
+  <div id="userInfo" style="color:#ffffff; font-weight:bold;">Usuario: <span id="userName"></span></div>
+  <div class="header-copy">
+    <h1>Registro de asistencia escolar</h1>
+    <p>Selecciona curso y materia, agrega alumnos, marca asistencia y envía confirmaciones por Gmail.</p>
+  </div>
+  <div class="header-actions" style="display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end;">
+    <button id="btnCerrarSesion" class="secondary" style="color:#ffffff;">Cerrar sesión</button>
+  </div>
+</div>
       <div class="info-row">
         <strong id="currentSelection" style="color: #ffffff;">Año 1 · Materia: Matemáticas </strong>
         <div id="lastEmailStatus" class="email-status">Envío automático: 2:15 PM · Último resumen: no enviado aún.</div>

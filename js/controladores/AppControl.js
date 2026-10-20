@@ -8,7 +8,9 @@ const init = () => {
       const currentTeacher = Object.values(TEACHERS).find(teacher => teacher.name === parsedUser.name);
       if (currentTeacher) {
         currentUser = currentTeacher;
-        sessionStorage.setItem('activeUser', JSON.stringify(currentTeacher));
+    sessionStorage.setItem('activeUser', JSON.stringify(currentTeacher));
+    const userNameSpan = document.getElementById('userName');
+    if (userNameSpan) userNameSpan.textContent = currentUser.name;
       } else {
         sessionStorage.removeItem('activeUser');
       }
