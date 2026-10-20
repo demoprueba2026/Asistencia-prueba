@@ -529,7 +529,7 @@ body {
   .header-top {
     flex-direction: column;
     align-items: stretch;
-    text-align: left;
+    text-align: center;
   }
 
   #mainView .header-copy {
