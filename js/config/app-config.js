@@ -44,7 +44,7 @@ const TEACHERS = {
     puedeGestionarActividades: true,
     puedeMarcarAsistencia: true,
     esAdmin: true,
-    soloAdmin: false
+    soloAdmin: true
   },
   "david": {
     password: ["prueba1", "David123", "david123", "admin123", "123456", "David", "david"],
@@ -59,7 +59,7 @@ const TEACHERS = {
     puedeMarcarAsistencia: true,
     esAdmin: true,
     soloAdmin: false
-  },
+  },3
   "Prueba2": {
     password: "Prueba2",
     name: "Prof: Control de esturdio",
