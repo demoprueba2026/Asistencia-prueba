@@ -26,8 +26,8 @@ const TEACHERS = {
     puedeVerDatosPersonales: true,
     esAdmin: false
   },
-  "Prueba3": {
-    password: "Prueba3",
+  "prueba3": {
+    password: "prueba3",
     name: "Administrador de Sistema",
     puedeVerDatosPersonales: true,
     soloAdmin: true
