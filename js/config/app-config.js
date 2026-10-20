@@ -37,7 +37,7 @@ const TEACHERS = {
     name: "Prof: Admin",
     allowedYears: [1, 2, 3, 4, 5],
     puedeAgregarEstudiantes: true,
-    soloAdmin: true
+    esAdmin: true,
     puedeGestionarActividades: true,
     puedeVerDatosPersonales: true,
     puedeGestionarBoletas: true
