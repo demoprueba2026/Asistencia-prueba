@@ -358,14 +358,15 @@
 
   <main id="mainView" class="app-shell hidden">
     <header>
-      <div class="header-top" style="display:flex; align-items:center; justify-content:space-between;">
-  <a href="registro.html" class="secondary back-button" style="display:inline-flex; align-items:center; justify-content:center; color:#ffffff; text-decoration:none; padding:10px 16px; border-radius:8px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15);">📄 Registro</a>
-  <div class="header-copy">
-    <h1>Registro de asistencia escolar</h1>
-    <p>Selecciona curso y materia, agrega alumnos, marca asistencia y envía confirmaciones por Gmail.</p>
-  </div>
-  <button id="btnCerrarSesion" class="secondary" style="color:#ffffff;">Cerrar sesión</button>
-</div>
+      <div class="header-top">
+        <div class="header-copy">
+          <h1>Registro de asistencia escolar</h1>
+          <p>Selecciona curso y materia, agrega alumnos, marca asistencia y envía confirmaciones por Gmail.</p>
+        </div>
+        <div class="header-actions" style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end;">
+          <a href="registro.html" class="secondary back-button" style="display: inline-flex; align-items: center; justify-content: center; color: #ffffff; text-decoration: none; padding: 10px 16px; border-radius: 8px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);">📄 Registro</a>
+          <button id="btnCerrarSesion" class="secondary" style="color: #ffffff;">Cerrar sesión</button>
+        </div>
       </div>
       <div class="info-row">
         <strong id="currentSelection" style="color: #ffffff;">Año 1 · Materia: Matemáticas </strong>
