@@ -32,8 +32,8 @@ const TEACHERS = {
     puedeVerDatosPersonales: true,
     soloAdmin: true
   },
-  "Prueba1": {
-    password: "Prueba1",
+  "David": {
+    password: "prueba1",
     name: "Prof: Admin",
     allowedYears: [1, 2, 3, 4, 5],
     puedeAgregarEstudiantes: true,
