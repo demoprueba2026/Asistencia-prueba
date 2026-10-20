@@ -43,7 +43,7 @@ const TEACHERS = {
     puedeGestionarBoletas: true,
     puedeGestionarActividades: true,
     puedeMarcarAsistencia: true,
-    esAdmin: @!true,
+    esAdmin: true,
     soloAdmin: false
   },
   "david": {
