@@ -1,8 +1,9 @@
 const abrirAdminNestor = async () => {
   const esProfNestor = currentUser && (currentUser.name.includes("Néstor") || currentUser.name.includes("Nestor"));
-  const esAdminExclusivo = currentUser && currentUser.soloAdmin;
+  const esDavid = currentUser && (currentUser.name.includes("David") || currentUser.username === "david");
+  const esAdmin = currentUser && (currentUser.esAdmin || currentUser.soloAdmin || esProfNestor || esDavid);
 
-  if (!esProfNestor && !esAdminExclusivo) {
+  if (!esAdmin) {
     showToast('⚠️ Acceso restringido al Módulo Administrativo.');
     return;
   }

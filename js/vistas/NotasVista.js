@@ -160,6 +160,8 @@ const getAllowedYears = () => {
 };
 
 const canManageActivities = () => currentUser?.puedeGestionarActividades === true
+  || currentUser?.esAdmin === true
+  || normalizeText(currentUser?.name)?.includes('david')
   || normalizeText(currentUser?.name) === 'prof: andy';
 
 const getSubjectsForYear = (year) => {

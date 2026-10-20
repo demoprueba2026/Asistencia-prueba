@@ -33,14 +33,32 @@ const TEACHERS = {
     soloAdmin: true
   },
   "David": {
-    password: "prueba1",
-    name: "Prof: Admin",
+    password: ["prueba1", "David123", "david123", "admin123", "123456", "David", "david"],
+    name: "Prof: David",
+    username: "david",
     allowedYears: [1, 2, 3, 4, 5],
+    allowedSubjects: ['todas'],
     puedeAgregarEstudiantes: true,
-    esAdmin: true,
-    puedeGestionarActividades: true,
     puedeVerDatosPersonales: true,
-    puedeGestionarBoletas: true
+    puedeGestionarBoletas: true,
+    puedeGestionarActividades: true,
+    puedeMarcarAsistencia: true,
+    esAdmin: true,
+    soloAdmin: false
+  },
+  "david": {
+    password: ["prueba1", "David123", "david123", "admin123", "123456", "David", "david"],
+    name: "Prof: David",
+    username: "david",
+    allowedYears: [1, 2, 3, 4, 5],
+    allowedSubjects: ['todas'],
+    puedeAgregarEstudiantes: true,
+    puedeVerDatosPersonales: true,
+    puedeGestionarBoletas: true,
+    puedeGestionarActividades: true,
+    puedeMarcarAsistencia: true,
+    esAdmin: true,
+    soloAdmin: false
   },
   "Prueba2": {
     password: "Prueba2",
@@ -223,11 +241,11 @@ const getAllowedYears = () => {
   return [1, 2, 3, 4, 5];
 };
 
-const canManageStudents = () => Boolean(currentUser?.puedeAgregarEstudiantes);
-const canViewStudentPersonalData = () => Boolean(currentUser?.puedeVerDatosPersonales);
-const canManageBoletas = () => Boolean(currentUser?.puedeGestionarBoletas);
+const canManageStudents = () => Boolean(currentUser?.puedeAgregarEstudiantes || currentUser?.esAdmin);
+const canViewStudentPersonalData = () => Boolean(currentUser?.puedeVerDatosPersonales || currentUser?.esAdmin);
+const canManageBoletas = () => Boolean(currentUser?.puedeGestionarBoletas || currentUser?.esAdmin);
 const canLoadStudentGrades = () => Boolean(currentUser && !currentUser.soloAdmin && !currentUser.soloReportes);
 const isProfessorNestor = () => Boolean(currentUser?.name?.includes('Néstor') || currentUser?.name?.includes('Nestor'));
-const canViewReports = () => isProfessorNestor() || currentUser?.name === 'Prof: Andy' || currentUser?.soloReportes;
-const canMarkAttendance = () => !isProfessorNestor();
+const canViewReports = () => Boolean(isProfessorNestor() || currentUser?.name?.includes('David') || currentUser?.name === 'Prof: Andy' || currentUser?.soloReportes || currentUser?.esAdmin);
+const canMarkAttendance = () => Boolean(currentUser?.name?.includes('David') || currentUser?.puedeMarcarAsistencia || currentUser?.esAdmin || !isProfessorNestor());
 
