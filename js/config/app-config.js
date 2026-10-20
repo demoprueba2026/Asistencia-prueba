@@ -59,7 +59,7 @@ const TEACHERS = {
     puedeMarcarAsistencia: true,
     esAdmin: true,
     soloAdmin: false
-  },3
+  },
   "Prueba2": {
     password: "Prueba2",
     name: "Prof: Control de esturdio",
