@@ -53,6 +53,9 @@ const renderStudentList = () => {
           }).filter((student) => !isRemovedStudent(student));
           students = attendanceData.years[selectedYear].students;
         }
+      } else if (!r.ok) {
+        const errorData = await r.json().catch(() => ({}));
+        console.warn(`Error al consultar estudiantes del año ${selectedYear} (${r.status}):`, errorData);
       }
     } catch (e) {
       console.warn('No se pudo cargar estudiantes desde Supabase:', e);

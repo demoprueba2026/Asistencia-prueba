@@ -1,14 +1,21 @@
+try {
+  require('dotenv').config();
+} catch (e) {}
+
 const SUPABASE_URL = (
   process.env.SUPABASE_URL ||
   process.env.NEXT_PUBLIC_SUPABASE_URL ||
   ''
-).replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
+).trim().replace(/^["']|["']$/g, '').replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
 
-const SUPABASE_KEY =
+const SUPABASE_KEY = (
   process.env.SUPABASE_KEY ||
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
   process.env.SUPABASE_ANON_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  process.env.SUPABASE_API_KEY ||
+  ''
+).trim().replace(/^["']|["']$/g, '');
 
 const parseBody = async (req) => {
   if (req.body && typeof req.body === 'object') return req.body;
@@ -66,7 +73,12 @@ module.exports = async function handler(req, res) {
   }
 
   if (!SUPABASE_URL || !SUPABASE_KEY) {
-    return res.status(500).json({ error: 'Falta SUPABASE_URL o SUPABASE_KEY en Vercel.' });
+    return res.status(500).json({
+      error: 'Falta configurar SUPABASE_URL o SUPABASE_KEY en las variables de entorno.',
+      hasUrl: Boolean(SUPABASE_URL),
+      hasKey: Boolean(SUPABASE_KEY),
+      hint: 'Agrégalas en Vercel (Project Settings -> Environment Variables) o en el archivo .env si ejecutas en local.'
+    });
   }
 
   try {
@@ -217,6 +229,11 @@ module.exports = async function handler(req, res) {
 
     return res.status(405).json({ error: 'Method Not Allowed', allowed: ['GET', 'POST', 'PATCH', 'DELETE'] });
   } catch (error) {
-    return res.status(500).json({ error: 'Error en la API de estudiantes.', details: error.message });
+    console.error('Error en api/students:', error);
+    return res.status(500).json({
+      error: 'Error interno en la API de estudiantes.',
+      details: error.message || String(error),
+      hint: 'Verifica la conexión a Supabase, que las tablas existan (supabase-setup.sql) y que las variables de entorno sean correctas.'
+    });
   }
 };

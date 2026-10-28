@@ -173,14 +173,35 @@ const deleteStudentFromSupabase = async (id) => {
   return result;
 };
 
-const getStudentsFromSupabase = async (year) => {
+const getStudentsFromSupabase = async (year, date) => {
   const query = year ? `?year=eq.${encodeURIComponent(String(year))}` : '';
   const response = await supabaseFetch(`/students${query}`);
   const result = await response.json().catch(() => []);
   if (!response.ok) {
     throw new Error(result.message || result.error || 'No se pudo consultar Supabase.');
   }
-  return Array.isArray(result) ? result.map((row) => normalizeStudentRecord(row, Number(year || row.year || 1))) : [];
+  const students = Array.isArray(result) ? result.map((row) => normalizeStudentRecord(row, Number(year || row.year || 1))) : [];
+  if (date && students.length) {
+    try {
+      const attendanceResponse = await supabaseFetch(
+        `/attendances?date=eq.${encodeURIComponent(String(date))}&select=student_id,subject,status,email_sent_at`
+      );
+      const attendanceRows = await attendanceResponse.json().catch(() => []);
+      if (attendanceResponse.ok && Array.isArray(attendanceRows)) {
+        const map = new Map(students.map((s) => [String(s.id), s]));
+        attendanceRows.forEach((row) => {
+          const student = map.get(String(row.student_id));
+          if (!student) return;
+          student.attendanceByDate = student.attendanceByDate || {};
+          student.attendanceByDate[date] = student.attendanceByDate[date] || {};
+          student.attendanceByDate[date][row.subject] = row.status;
+        });
+      }
+    } catch (e) {
+      console.warn('No se pudo consultar asistencias por fecha en Supabase:', e);
+    }
+  }
+  return students;
 };
 
 const writeAttendanceToSupabase = async ({ id, name, cedula, email, phone, year, subject, subjectLabel, status, date }) => {
@@ -378,7 +399,7 @@ app.use(express.static(path.join(__dirname)));
 app.get('/api/students', async (req, res) => {
   try {
     if (IS_SUPABASE_CONFIGURED) {
-      const students = await getStudentsFromSupabase(req.query.year);
+      const students = await getStudentsFromSupabase(req.query.year, req.query.date);
       return res.json(students);
     }
 

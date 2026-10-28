@@ -1,14 +1,21 @@
+try {
+  require('dotenv').config();
+} catch (e) {}
+
 const SUPABASE_URL = (
   process.env.SUPABASE_URL ||
   process.env.NEXT_PUBLIC_SUPABASE_URL ||
   ''
-).replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
+).trim().replace(/^["']|["']$/g, '').replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
 
-const SUPABASE_KEY =
+const SUPABASE_KEY = (
   process.env.SUPABASE_KEY ||
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
   process.env.SUPABASE_ANON_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  process.env.SUPABASE_API_KEY ||
+  ''
+).trim().replace(/^["']|["']$/g, '');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -24,7 +31,10 @@ module.exports = async (req, res) => {
   }
 
   if (!SUPABASE_URL || !SUPABASE_KEY) {
-    return res.status(500).json({ error: 'No se ha configurado Supabase en el servidor.' });
+    return res.status(500).json({
+      error: 'Falta configurar SUPABASE_URL o SUPABASE_KEY en las variables de entorno.',
+      hint: 'Agrégalas en Vercel (Project Settings -> Environment Variables) o en el archivo .env si ejecutas en local.'
+    });
   }
 
   try {

@@ -165,10 +165,16 @@ const handleStudentFormSubmit = async (event) => {
   attendanceData.years[targetYearKey].students.push(newStudent);
   saveData();
   const savedStudent = await sincronizarEstudiante(newStudent);
+  if (!savedStudent) {
+    attendanceData.years[targetYearKey].students = attendanceData.years[targetYearKey].students.filter((s) => s.id !== newStudent.id);
+    saveData();
+    renderStudentList();
+    return;
+  }
   if (savedStudent?.id !== undefined) newStudent.id = savedStudent.id;
   studentForm.reset();
   renderStudentList();
-  showToast('Estudiante agregado correctamente');
+  showToast('Estudiante agregado y guardado en Supabase');
   if (addStudentView && !addStudentView.classList.contains('hidden')) {
     showView('main');
   }

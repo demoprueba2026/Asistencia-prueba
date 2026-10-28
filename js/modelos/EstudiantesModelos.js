@@ -106,7 +106,8 @@ const cargarTodosLosEstudiantesDesdeSupabase = async () => {
     });
 
     if (!response.ok) {
-      console.warn('No se pudo cargar todos los estudiantes desde Supabase; se muestra estado vacío en memoria.');
+      const errData = await response.json().catch(() => ({}));
+      console.warn('No se pudo cargar todos los estudiantes desde Supabase (status ' + response.status + '):', errData);
       return;
     }
 
@@ -160,12 +161,16 @@ const sincronizarEstudiante = async (student, method = 'POST') => {
     const response = await fetch(url, options);
     if (!response.ok) {
       const errorBody = await response.json().catch(() => ({}));
-      throw new Error(errorBody.error || `Error ${response.status} al sincronizar estudiante`);
+      const errorMsg = errorBody.error || errorBody.message || `Error ${response.status} al sincronizar estudiante`;
+      if (errorBody.hint) {
+        console.error('Ayuda de configuración:', errorBody.hint);
+      }
+      throw new Error(errorMsg);
     }
     return method === 'DELETE' ? true : await response.json();
   } catch (error) {
-    console.warn('No se pudo sincronizar el estudiante con el servidor:', error);
-    showToast('No se pudo guardar el estudiante en la nube');
+    console.error('No se pudo sincronizar el estudiante con el servidor:', error);
+    showToast(`Error al guardar en la nube: ${error.message || 'Verifica la consola'}`);
     return false;
   }
 };
