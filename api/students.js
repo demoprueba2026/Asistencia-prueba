@@ -2,11 +2,16 @@ try {
   require('dotenv').config();
 } catch (e) {}
 
-const SUPABASE_URL = (
+let rawUrl = (
   process.env.SUPABASE_URL ||
   process.env.NEXT_PUBLIC_SUPABASE_URL ||
   ''
 ).trim().replace(/^["']|["']$/g, '').replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
+
+if (rawUrl && !/^https?:\/\//i.test(rawUrl) && !/^postgres/i.test(rawUrl)) {
+  rawUrl = `https://${rawUrl}`;
+}
+const SUPABASE_URL = rawUrl;
 
 const SUPABASE_KEY = (
   process.env.SUPABASE_KEY ||
@@ -230,10 +235,25 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed', allowed: ['GET', 'POST', 'PATCH', 'DELETE'] });
   } catch (error) {
     console.error('Error en api/students:', error);
+    const causeStr = error.cause ? (error.cause.message || error.cause.code || String(error.cause)) : '';
+    let diagnostic = '';
+    if (SUPABASE_URL.includes('tu-proyecto.supabase.co')) {
+      diagnostic = 'Aún tienes el valor de ejemplo "tu-proyecto.supabase.co" en SUPABASE_URL. Debes reemplazarlo con la URL real de tu proyecto Supabase.';
+    } else if (/^postgres(ql)?:\/\//i.test(SUPABASE_URL)) {
+      diagnostic = 'Configuraste la cadena de conexión de PostgreSQL en SUPABASE_URL. Debes poner la Project URL (ejemplo: https://xxxxxxxx.supabase.co) de Supabase -> Project Settings -> API.';
+    } else if (/enotfound/i.test(causeStr)) {
+      diagnostic = `No se pudo resolver el dominio de Supabase (${SUPABASE_URL}). Revisa si tu proyecto fue pausado en Supabase o si la URL tiene un error tipográfico.`;
+    } else if (/econnrefused|timeout/i.test(causeStr)) {
+      diagnostic = 'No se pudo conectar al servidor de Supabase (conexión rechazada o timeout). Verifica que el proyecto esté activo en el panel de Supabase.';
+    }
+
     return res.status(500).json({
       error: 'Error interno en la API de estudiantes.',
       details: error.message || String(error),
-      hint: 'Verifica la conexión a Supabase, que las tablas existan (supabase-setup.sql) y que las variables de entorno sean correctas.'
+      cause: causeStr || undefined,
+      urlUsed: SUPABASE_URL ? `${SUPABASE_URL.slice(0, 20)}...` : 'vacía',
+      diagnostic: diagnostic || undefined,
+      hint: diagnostic || 'Verifica en Supabase que el proyecto no esté en estado Paused (pausado) y que la URL y KEY sean las de Project Settings -> API.'
     });
   }
 };
