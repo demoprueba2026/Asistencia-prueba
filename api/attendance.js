@@ -2,11 +2,16 @@ try {
   require('dotenv').config();
 } catch (e) {}
 
-const SUPABASE_URL = (
+let rawUrl = (
   process.env.SUPABASE_URL ||
   process.env.NEXT_PUBLIC_SUPABASE_URL ||
   ''
 ).trim().replace(/^["']|["']$/g, '').replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
+
+if (rawUrl && !/^https?:\/\//i.test(rawUrl) && !/^postgres/i.test(rawUrl)) {
+  rawUrl = `https://${rawUrl}`;
+}
+const SUPABASE_URL = rawUrl;
 
 const SUPABASE_KEY = (
   process.env.SUPABASE_KEY ||
