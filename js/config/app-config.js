@@ -10,8 +10,8 @@ console.log('DOM detectado:', {
 
 
 const TEACHERS = {
-  "Prueba4": {
-    password: "Prueba4",
+  "prueba4": {
+    password: "prueba4",
     name: "Prof: sub director",
     allowedYears: [1, 2, 3, 4, 5],
     puedeAgregarEstudiantes: true,
@@ -46,7 +46,7 @@ const TEACHERS = {
     esAdmin: true,
     soloAdmin: false
   },
-  "david": {
+  "prueba1": {
     password: ["prueba1", "David123", "david123", "admin123", "123456", "David", "david"],
     name: "Prof: David",
     username: "david",
@@ -60,8 +60,8 @@ const TEACHERS = {
     esAdmin: true,
     soloAdmin: false
   },
-  "Prueba2": {
-    password: "Prueba2",
+  "prueba2": {
+    password: "prueba2",
     name: "Prof: Control de esturdio",
     allowedYears: [1, 2, 3, 4, 5],
     puedeAgregarEstudiantes: true,
