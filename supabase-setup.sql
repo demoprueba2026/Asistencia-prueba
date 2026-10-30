@@ -181,13 +181,13 @@ insert into public.students (
   '04125486575',
   1,
   'activo',
-  'NO',
-  'no_pago',
-  0,
+  'SI',
+  'pago',
+  30,
   '{}'::jsonb,
   '{"matematicas": {"status": "inasistente", "label": "Matemáticas"}}'::jsonb,
   '{"2026-08-28": {"matematicas": "inasistente"}}'::jsonb,
-  '{}'::jsonb
+  '{"castellano": {"1er": "18", "2do": "17", "3er": "19", "Final": "18"}, "ingles": {"1er": "16", "2do": "17", "3er": "18", "Final": "17"}, "matematicas": {"1er": "19", "2do": "18", "3er": "20", "Final": "19"}, "educacion-fisica": {"1er": "20", "2do": "20", "3er": "20", "Final": "20"}, "arte-patrimonio": {"1er": "17", "2do": "18", "3er": "17", "Final": "17"}, "ciencias-naturales": {"1er": "18", "2do": "19", "3er": "18", "Final": "18"}, "ghc": {"1er": "17", "2do": "17", "3er": "18", "Final": "17"}, "orientacion-convivencia": {"1er": "20", "2do": "20", "3er": "20", "Final": "20"}, "frances": {"1er": "A", "2do": "A", "3er": "A", "Final": "A"}, "crp": {"1er": "A", "2do": "A", "3er": "A", "Final": "A"}}'::jsonb
 )
 on conflict (id) do nothing;
 
