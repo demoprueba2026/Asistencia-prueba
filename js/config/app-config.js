@@ -30,6 +30,7 @@ const TEACHERS = {
     password: "prueba3",
     name: "Administrador de Sistema",
     puedeVerDatosPersonales: true,
+    puedeVerReportes: true,
     soloAdmin: true
   },
   "David": {
@@ -43,6 +44,7 @@ const TEACHERS = {
     puedeGestionarBoletas: true,
     puedeGestionarActividades: true,
     puedeMarcarAsistencia: true,
+    puedeVerReportes: true,
     esAdmin: true,
     soloAdmin: false
   },
@@ -57,6 +59,7 @@ const TEACHERS = {
     puedeGestionarBoletas: true,
     puedeGestionarActividades: true,
     puedeMarcarAsistencia: true,
+    puedeVerReportes: true,
     esAdmin: true,
     soloAdmin: false
   },
@@ -67,6 +70,7 @@ const TEACHERS = {
     puedeAgregarEstudiantes: true,
     puedeGestionarActividades: true,
     puedeVerDatosPersonales: true,
+    puedeVerReportes: true,
     esAdmin: false
   },
   "Miriam Ariza": {
@@ -246,6 +250,5 @@ const canViewStudentPersonalData = () => Boolean(currentUser?.puedeVerDatosPerso
 const canManageBoletas = () => Boolean(currentUser?.puedeGestionarBoletas || currentUser?.esAdmin);
 const canLoadStudentGrades = () => Boolean(currentUser && !currentUser.soloAdmin && !currentUser.soloReportes);
 const isProfessorNestor = () => Boolean(currentUser?.name?.includes('Néstor') || currentUser?.name?.includes('Nestor'));
-const canViewReports = () => Boolean(isProfessorNestor() || currentUser?.name?.includes('David') || currentUser?.name === 'Prof: Andy' || currentUser?.soloReportes || currentUser?.esAdmin);
+const canViewReports = () => Boolean(isProfessorNestor() || currentUser?.name?.includes('David') || currentUser?.name === 'Prof: Andy' || currentUser?.soloReportes || currentUser?.esAdmin || currentUser?.puedeVerReportes);
 const canMarkAttendance = () => Boolean(currentUser?.name?.includes('David') || currentUser?.puedeMarcarAsistencia || currentUser?.esAdmin || !isProfessorNestor());
-

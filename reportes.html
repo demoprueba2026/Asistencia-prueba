@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Dashboard de Estadísticas - Solo Administrador</title>
+  <title>Dashboard de Reportes de Asistencia</title>
   <link rel="icon" type="image/png" href="sello.png" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
@@ -137,7 +137,7 @@
 
   <div id="accessDenied" class="card hidden" style="max-width: 500px; text-align: center; margin: 40px auto;">
     <h2 style="color: var(--danger);">Acceso Restringido</h2>
-    <p>Lo sentimos, esta sección es exclusiva para la Dirección Académica.</p>
+    <p>Lo sentimos, no tienes permiso para acceder a este módulo.</p>
     <button class="btn" onclick="salirDeReportes()">Volver al Panel de Registro de Asistencia</button>
   </div>
 
@@ -285,7 +285,9 @@
       || sessionUser.name === 'Prof: Néstor'
       || sessionUser.name === 'Prof: Nestor'
       || sessionUser.name === 'Prof: Patricia'
-      || sessionUser.name === 'Prof: Abrahan';
+      || sessionUser.name === 'Prof: Abrahan'
+      || sessionUser.esAdmin
+      || sessionUser.puedeVerReportes;
 
     function salirDeReportes() {
       if (sessionUser.soloReportes) {
