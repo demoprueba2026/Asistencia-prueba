@@ -73,8 +73,8 @@ const TEACHERS = {
     puedeVerReportes: true,
     esAdmin: false
   },
-  "Miriam Ariza": {
-    password: "Chala2011",
+  "profe1": {
+    password: "profe!",
     name: "Prof: Miriam",
     allowedYears: [1, 2, 3, 4, 5],
     allowedSubjects: ['orientacion-convivencia'],
