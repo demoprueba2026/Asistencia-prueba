@@ -9,7 +9,7 @@ const updateLastEmailStatus = () => {
 
 const sendDailyEmailsNow = async () => {
   const button = document.getElementById('sendDailyEmailsNow');
-  if (!button || !confirm('Se enviará ahora el resumen de asistencia de hoy a todos los estudiantes con registros. El envío programado seguirá activo y podría enviar esos correos nuevamente. ¿Continuar?')) return;
+  if (!button || !confirm('Se enviará ahora el resumen de asistencia de hoy a todos los estudiantes con registros que aún no lo hayan recibido. Los correos enviados quedarán registrados para evitar duplicados. ¿Continuar?')) return;
 
   const originalText = button.textContent;
   button.disabled = true;
@@ -240,4 +240,3 @@ const handleStudentListClick = (event) => {
     setStudentStatus(studentId, action);
   }
 };
-

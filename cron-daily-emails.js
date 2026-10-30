@@ -102,7 +102,16 @@ const markAttendancesAsSent = async (attendances) => {
   }
 };
 
-const getToday = () => new Date().toISOString().slice(0, 10);
+const getToday = () => {
+  const dateParts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Caracas',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const parts = Object.fromEntries(dateParts.map(({ type, value }) => [type, value]));
+  return `${parts.year}-${parts.month}-${parts.day}`;
+};
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
