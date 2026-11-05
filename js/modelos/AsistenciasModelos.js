@@ -1,5 +1,11 @@
 const sincronizarAsistencia = async (student, status) => {
   try {
+    const teacherName = (typeof currentUser !== 'undefined' && currentUser?.name)
+      ? currentUser.name
+      : (JSON.parse(sessionStorage.getItem('activeUser') || '{}').name || '');
+    const now = new Date();
+    const timeFormatted = now.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+
     const response = await fetch(API_ATTENDANCE, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -14,6 +20,8 @@ const sincronizarAsistencia = async (student, status) => {
         subjectLabel: getSubjectLabel(selectedYear, selectedSubject),
         status,
         date: selectedDate,
+        teacher: teacherName,
+        time: timeFormatted,
       }),
     });
     if (!response.ok) {

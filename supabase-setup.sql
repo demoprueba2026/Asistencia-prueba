@@ -60,6 +60,7 @@ create table if not exists public.attendances (
 
 -- Asegurar columnas y restricciones en attendances por si ya existía:
 alter table public.attendances add column if not exists subject_label text;
+alter table public.attendances add column if not exists teacher text;
 alter table public.attendances add column if not exists email_sent_at timestamptz;
 alter table public.attendances add column if not exists created_at timestamptz not null default now();
 

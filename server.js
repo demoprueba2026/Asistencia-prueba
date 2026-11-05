@@ -564,13 +564,14 @@ app.get('/api/sync-state', async (req, res) => {
 });
 
 app.post('/api/attendance', async (req, res) => {
-  const { id, name, cedula, email, phone, year, subject, subjectLabel, status, date } = req.body || {};
+  const { id, name, cedula, email, phone, year, subject, subjectLabel, status, date, teacher, time } = req.body || {};
   if (!id || !name || !email || !year || !subject || !status) {
     return res.status(400).json({ error: 'Falta id, nombre, correo, año, materia o estado.' });
   }
 
   try {
     const attendanceDate = date || new Date().toISOString().slice(0, 10);
+    const markTime = time || new Date().toISOString();
     const student = {
       id,
       name,
@@ -578,14 +579,14 @@ app.post('/api/attendance', async (req, res) => {
       email,
       phone: phone || '',
       year: Number(year),
-      attendance: { [subject]: { status, label: subjectLabel || subject } },
+      attendance: { [subject]: { status, label: subjectLabel || subject, teacher, time: markTime } },
       attendanceByDate: {
-        [attendanceDate]: { [subject]: status },
+        [attendanceDate]: { [subject]: { status, teacher, time: markTime } },
       },
     };
 
     if (IS_SUPABASE_CONFIGURED) {
-      await writeAttendanceToSupabase({ id, name, cedula, email, phone, year, subject, subjectLabel, status, date: attendanceDate });
+      await writeAttendanceToSupabase({ id, name, cedula, email, phone, year, subject, subjectLabel, status, date: attendanceDate, teacher });
       const data = loadAttendanceData();
       const currentStudent = data.students[id] || { id, attendance: {}, attendanceByDate: {} };
       currentStudent.name = name;
@@ -593,10 +594,10 @@ app.post('/api/attendance', async (req, res) => {
       currentStudent.phone = phone || '';
       currentStudent.year = Number(year);
       currentStudent.attendance = currentStudent.attendance || {};
-      currentStudent.attendance[subject] = { status, label: subjectLabel || subject };
+      currentStudent.attendance[subject] = { status, label: subjectLabel || subject, teacher, time: markTime };
       currentStudent.attendanceByDate = currentStudent.attendanceByDate || {};
       currentStudent.attendanceByDate[attendanceDate] = currentStudent.attendanceByDate[attendanceDate] || {};
-      currentStudent.attendanceByDate[attendanceDate][subject] = status;
+      currentStudent.attendanceByDate[attendanceDate][subject] = { status, teacher, time: markTime };
       data.students[id] = currentStudent;
       saveAttendanceData(data);
 
@@ -611,10 +612,10 @@ app.post('/api/attendance', async (req, res) => {
     currentStudent.phone = phone || currentStudent.phone || '';
     currentStudent.year = Number(year);
     currentStudent.attendance = currentStudent.attendance || {};
-    currentStudent.attendance[subject] = { status, label: subjectLabel || subject };
+    currentStudent.attendance[subject] = { status, label: subjectLabel || subject, teacher, time: markTime };
     currentStudent.attendanceByDate = currentStudent.attendanceByDate || {};
     currentStudent.attendanceByDate[attendanceDate] = currentStudent.attendanceByDate[attendanceDate] || {};
-    currentStudent.attendanceByDate[attendanceDate][subject] = status;
+    currentStudent.attendanceByDate[attendanceDate][subject] = { status, teacher, time: markTime };
     data.students[id] = currentStudent;
     saveAttendanceData(data);
 

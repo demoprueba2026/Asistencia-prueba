@@ -55,15 +55,37 @@ const supabaseFetch = async (path, options = {}) => {
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
     return res.status(204).end();
   }
 
+  if (req.method === 'GET') {
+    if (!SUPABASE_URL || !SUPABASE_KEY) {
+      return res.status(500).json({ error: 'Falta configurar Supabase.' });
+    }
+    const { date, subject } = req.query || {};
+    try {
+      let query = `?select=*&order=created_at.asc`;
+      if (date) query += `&date=eq.${encodeURIComponent(String(date))}`;
+      if (subject && subject !== 'todas' && subject !== 'general') {
+        query += `&subject=eq.${encodeURIComponent(String(subject))}`;
+      }
+      const response = await supabaseFetch(`/attendances${query}`);
+      const data = await response.json().catch(() => []);
+      if (!response.ok) {
+        return res.status(response.status).json({ error: data.message || data.error || 'Error al consultar asistencias.' });
+      }
+      return res.status(200).json(Array.isArray(data) ? data : []);
+    } catch (e) {
+      return res.status(500).json({ error: e.message || 'Error consultando asistencias.' });
+    }
+  }
+
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed', allowed: ['POST'] });
+    return res.status(405).json({ error: 'Method Not Allowed', allowed: ['GET', 'POST'] });
   }
 
   if (!SUPABASE_URL || !SUPABASE_KEY) {
@@ -75,13 +97,14 @@ module.exports = async function handler(req, res) {
 
   try {
     const body = await parseBody(req);
-    const { id, name, cedula, email, phone, year, subject, subjectLabel, status, date } = body || {};
+    const { id, name, cedula, email, phone, year, subject, subjectLabel, status, date, teacher, time } = body || {};
 
     if (!id || !name || !year || !subject || !status) {
       return res.status(400).json({ error: 'Falta id, nombre, año, materia o estado de asistencia.' });
     }
 
     const attendanceDate = date || new Date().toISOString().slice(0, 10);
+    const markTime = time || new Date().toISOString();
 
     const studentPayload = {
       id: String(id),
@@ -110,11 +133,20 @@ module.exports = async function handler(req, res) {
     const currentStudent = Array.isArray(currentStudents) && currentStudents.length ? currentStudents[0] : {};
 
     const attendanceMap = currentStudent.attendance || {};
-    attendanceMap[subject] = { status, label: subjectLabel || subject };
+    attendanceMap[subject] = {
+      status,
+      label: subjectLabel || subject,
+      teacher: teacher || null,
+      time: markTime,
+    };
 
     const attendanceByDateMap = currentStudent.attendance_by_date || {};
     attendanceByDateMap[attendanceDate] = attendanceByDateMap[attendanceDate] || {};
-    attendanceByDateMap[attendanceDate][subject] = status;
+    attendanceByDateMap[attendanceDate][subject] = {
+      status,
+      teacher: teacher || null,
+      time: markTime,
+    };
 
     const patchStudent = await supabaseFetch(`/students?id=eq.${encodeURIComponent(String(id))}`, {
       method: 'PATCH',
@@ -142,15 +174,28 @@ module.exports = async function handler(req, res) {
       subject,
       subject_label: subjectLabel || subject,
       status,
+      teacher: teacher || null,
       email_sent_at: null,
     };
 
-    const attendanceInsert = await supabaseFetch(`/attendances?on_conflict=student_id,date,subject`, {
+    let attendanceInsert = await supabaseFetch(`/attendances?on_conflict=student_id,date,subject`, {
       method: 'POST',
       headers: { Prefer: 'return=representation,resolution=merge-duplicates' },
       body: JSON.stringify([attendanceRow]),
     });
-    const attendanceResult = await attendanceInsert.json().catch(() => []);
+    let attendanceResult = await attendanceInsert.json().catch(() => []);
+
+    // Si falla porque no existe la columna 'teacher', reintentar sin ella
+    if (!attendanceInsert.ok && /column.*teacher|teacher.*column/i.test(attendanceResult.message || attendanceResult.error || '')) {
+      const fallbackRow = { ...attendanceRow };
+      delete fallbackRow.teacher;
+      attendanceInsert = await supabaseFetch(`/attendances?on_conflict=student_id,date,subject`, {
+        method: 'POST',
+        headers: { Prefer: 'return=representation,resolution=merge-duplicates' },
+        body: JSON.stringify([fallbackRow]),
+      });
+      attendanceResult = await attendanceInsert.json().catch(() => []);
+    }
 
     if (!attendanceInsert.ok) {
       return res.status(attendanceInsert.status).json({
