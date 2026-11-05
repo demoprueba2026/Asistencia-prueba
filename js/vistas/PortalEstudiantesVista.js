@@ -28,6 +28,13 @@ const materiasOficiales = [ "Castellano", "Ingles", "Matematica", "Educacion Fis
 const codigosMaterias = { "Castellano": "CA", "Ingles": "LE", "Matematica": "MA", "Educacion Fisica": "EF", "Arte y Patrimonio": "AyP", "Ciencias Naturales": "CN", "GHC": "GHC", "Orientacion y Convivencia": "OyC", "CRP": "FRA" };
 const nombresLargoMaterias = { "Castellano": "CASTELLANO", "Ingles": "INGLÉS Y OTRAS LENGUAS EXTRANJERAS", "Matematica": "MATEMÁTICAS", "Educacion Fisica": "EDUCACIÓN FÍSICA", "Arte y Patrimonio": "ARTE Y PATRIMONIO", "Ciencias Naturales": "CIENCIAS NATURALES", "GHC": "GEOGRAFÍA, HISTORIA Y CIUDADANÍA", "Orientacion y Convivencia": "ORIENTACIÓN Y CONVIVENCIA" };
 
+const escapeHtml = (value) => String(value ?? '')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/\"/g, '&quot;')
+  .replace(/'/g, '&#39;');
+
 const normalizarTexto = (texto) => texto ? String(texto).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim() : "";
 const normalizarCedula = (cedula) => String(cedula || '').trim().toUpperCase().replace(/\D/g, '') || String(cedula || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
 const normalizarMontoPago = (valor) => {
@@ -214,17 +221,25 @@ const renderizarBoletaEstudiante = (estudiante) => {
 
   const cuerpo = document.getElementById('tablaNotasBody');
   if (cuerpo) {
-    cuerpo.innerHTML = materiasBoleta.map(([materia]) => `
-      <tr>
-        <td class="col-area">${materia.toUpperCase()}</td>
-        <td>${extraerValorColumna(estudiante, materia, '1er')}</td>
-        <td>${extraerValorColumna(estudiante, materia, '2do')}</td>
-        <td>${extraerValorColumna(estudiante, materia, '3er')}</td>
-        <td>${extraerValorColumna(estudiante, materia, 'Final')}</td>
-        <td>-</td><td>-</td><td>-</td><td>-</td>
-        <td>-</td><td>-</td><td>-</td>
-      </tr>
-    `).join('');
+    cuerpo.innerHTML = materiasBoleta.map(([materia]) => {
+      const materiaEscapada = escapeHtml(materia.toUpperCase());
+      const primerLapso = escapeHtml(extraerValorColumna(estudiante, materia, '1er'));
+      const segundoLapso = escapeHtml(extraerValorColumna(estudiante, materia, '2do'));
+      const tercerLapso = escapeHtml(extraerValorColumna(estudiante, materia, '3er'));
+      const finalLapso = escapeHtml(extraerValorColumna(estudiante, materia, 'Final'));
+
+      return `
+        <tr>
+          <td class="col-area">${materiaEscapada}</td>
+          <td>${primerLapso}</td>
+          <td>${segundoLapso}</td>
+          <td>${tercerLapso}</td>
+          <td>${finalLapso}</td>
+          <td>-</td><td>-</td><td>-</td><td>-</td>
+          <td>-</td><td>-</td><td>-</td>
+        </tr>
+      `;
+    }).join('');
   }
 
   actualizarTexto('prom1er', extraerValorColumna(estudiante, 'Promedio del estudiante', '1er'));

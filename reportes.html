@@ -343,6 +343,13 @@
     let chartTopFaltas = null;
     let listaEstudiantesActual = [];
 
+    const escapeHtml = (value) => String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
     const SUBJECTS_BY_YEAR = {
       1: [{ id: 'matematicas', label: 'Matemáticas' }, { id: 'castellano', label: 'Castellano' }, { id: 'ingles', label: 'Inglés' }, { id: 'frances', label: 'Francés' }, { id: 'educacion-fisica', label: 'Educación Física' }, { id: 'arte-patrimonio', label: 'Arte y Patrimonio' }, { id: 'ciencias-naturales', label: 'Ciencias Naturales' }, { id: 'ghc', label: 'GHC' }, { id: 'orientacion-convivencia', label: 'Orientación y Convivencia' }, { id: 'crp', label: 'CRP' }],
       2: [{ id: 'matematicas', label: 'Matemáticas' }, { id: 'castellano', label: 'Castellano' }, { id: 'ingles', label: 'Inglés' }, { id: 'frances', label: 'Francés' }, { id: 'educacion-fisica', label: 'Educación Física' }, { id: 'arte-patrimonio', label: 'Arte y Patrimonio' }, { id: 'ciencias-naturales', label: 'Ciencias Naturales' }, { id: 'ghc', label: 'GHC' }, { id: 'orientacion-convivencia', label: 'Orientación y Convivencia' }, { id: 'crp', label: 'CRP' }],
@@ -749,14 +756,14 @@
 
         return `
           <tr style="border-bottom: 1px solid #f1f5f9;">
-            <td style="padding: 14px 12px; color: #334155; font-size: 0.93rem; vertical-align: middle;">${item.year}</td>
-            <td style="padding: 14px 12px; color: #0f172a; font-weight: 700; font-size: 0.93rem; vertical-align: middle;">${item.name}</td>
-            <td style="padding: 14px 12px; color: #475569; font-size: 0.93rem; vertical-align: middle;">${item.subject}</td>
+            <td style="padding: 14px 12px; color: #334155; font-size: 0.93rem; vertical-align: middle;">${escapeHtml(item.year)}</td>
+            <td style="padding: 14px 12px; color: #0f172a; font-weight: 700; font-size: 0.93rem; vertical-align: middle;">${escapeHtml(item.name)}</td>
+            <td style="padding: 14px 12px; color: #475569; font-size: 0.93rem; vertical-align: middle;">${escapeHtml(item.subject)}</td>
             <td style="padding: 14px 12px; font-size: 0.93rem; vertical-align: middle;">
-              <span style="${badgeStyle} padding: 4px 14px; border-radius: 9999px; font-size: 0.78rem; font-weight: 700; display: inline-block;">${item.status}</span>
+              <span style="${badgeStyle} padding: 4px 14px; border-radius: 9999px; font-size: 0.78rem; font-weight: 700; display: inline-block;">${escapeHtml(item.status)}</span>
             </td>
-            <td style="padding: 14px 12px; color: #64748b; font-size: 0.85rem; font-family: monospace, sans-serif; vertical-align: middle;">${item.time}</td>
-            <td style="padding: 14px 12px; color: #334155; font-size: 0.9rem; vertical-align: middle;">${item.teacher}</td>
+            <td style="padding: 14px 12px; color: #64748b; font-size: 0.85rem; font-family: monospace, sans-serif; vertical-align: middle;">${escapeHtml(item.time)}</td>
+            <td style="padding: 14px 12px; color: #334155; font-size: 0.9rem; vertical-align: middle;">${escapeHtml(item.teacher)}</td>
           </tr>
         `;
       }).join('');
@@ -1051,11 +1058,11 @@
 
         const row = document.createElement('tr');
         row.innerHTML = `
-          <td><strong>${est.nombre}</strong></td>
-          <td>${est.telefono}</td>
-          <td style="color: var(--success); font-weight: bold;">${est.asistencias}</td>
-          <td style="color: var(--danger); font-weight: bold;">${est.inasistencias}</td>
-          <td>${estadoHTML} <span style="font-size:12px; color:#666; margin-left:5px; font-weight: bold;">${Math.round(porcentajeInasistencia)}%</span></td>
+          <td><strong>${escapeHtml(est.nombre)}</strong></td>
+          <td>${escapeHtml(est.telefono)}</td>
+          <td style="color: var(--success); font-weight: bold;">${escapeHtml(est.asistencias)}</td>
+          <td style="color: var(--danger); font-weight: bold;">${escapeHtml(est.inasistencias)}</td>
+          <td>${estadoHTML} <span style="font-size:12px; color:#666; margin-left:5px; font-weight: bold;">${escapeHtml(Math.round(porcentajeInasistencia))}%</span></td>
         `;
         tbody.appendChild(row);
       });
