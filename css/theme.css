@@ -26,8 +26,10 @@ body[data-theme="dark"] {
   --border: #29384d;
   color-scheme: dark;
   color: #e8eef8 !important;
-  background: #07111f !important;
-  background-image: none !important;
+  background:
+    radial-gradient(circle at top left, rgba(77, 168, 255, 0.14), transparent 18%),
+    radial-gradient(circle at 80% 10%, rgba(14, 165, 255, 0.12), transparent 20%),
+    linear-gradient(180deg, var(--bg) 0%, var(--surface) 100%) !important;
 }
 
 body[data-theme="light"] :is(h1, h2, h3, h4, p, label, th, td, .intro, .list-heading, .assessment-editor-heading, .status, .empty, .toolbar strong) {
@@ -46,13 +48,13 @@ body[data-theme="dark"] :is(.landing-copy, .email-status, .selector-note, .stude
   color: #a9bad0 !important;
 }
 
-body[data-theme="light"] :is(.landing-card, .landing-section, .app-shell, .boletin, .boletin-paper, .document-panel, .top-bar, .recibo-paper, .student-list-section, .card, .kpi-card, .filters, .assessment-editor, .assessment-item, .assessment-field, .grade-summary-item, .modal-content, #adminNestorView, .admin-card, .admin-section) {
+body[data-theme="light"] :is(.landing-card, .landing-section, .app-shell, .boletin, .document-panel, .top-bar, .student-list-section, .card, .kpi-card, .filters, .assessment-editor, .assessment-item, .assessment-field, .grade-summary-item, .modal-content, #adminNestorView, .admin-card, .admin-section) {
   color: #172033 !important;
   background-color: #fff !important;
   border-color: #d7e0eb !important;
 }
 
-body[data-theme="dark"] :is(.landing-card, .landing-section, .app-shell, .boletin, .boletin-paper, .document-panel, .top-bar, .recibo-paper, .student-list-section, .card, .kpi-card, .filters, .assessment-editor, .assessment-item, .assessment-field, .grade-summary-item, .modal-content, #adminNestorView, .admin-card, .admin-section) {
+body[data-theme="dark"] :is(.landing-card, .landing-section, .app-shell, .boletin, .document-panel, .top-bar, .student-list-section, .card, .kpi-card, .filters, .assessment-editor, .assessment-item, .assessment-field, .grade-summary-item, .modal-content, #adminNestorView, .admin-card, .admin-section) {
   color: #e8eef8 !important;
   background-color: #111e30 !important;
   border-color: #29384d !important;
@@ -90,16 +92,6 @@ body[data-theme="dark"] :is(#backToLanding, #currentSelection, #subjectInfo, #ad
   color: #e8eef8 !important;
 }
 
-body[data-theme="light"] .app-shell,
-body[data-theme="light"] .app-shell * {
-  color: #172033 !important;
-}
-
-body[data-theme="dark"] .app-shell,
-body[data-theme="dark"] .app-shell * {
-  color: #e8eef8 !important;
-}
-
 body[data-theme="light"] :is(.intro p, .list-heading p, .assessment-total, .assessment-points, .assessment-field-label, .grade-summary-item span, .empty, .student-summary) {
   color: #526174 !important;
 }
@@ -108,12 +100,12 @@ body[data-theme="dark"] :is(.intro p, .list-heading p, .assessment-total, .asses
   color: #a9bad0 !important;
 }
 
-body[data-theme="light"] :is(th, .table-header th) {
+body[data-theme="light"] #statsContent th {
   color: #172033 !important;
   background-color: #e8edf4 !important;
 }
 
-body[data-theme="dark"] :is(th, .table-header th) {
+body[data-theme="dark"] #statsContent th {
   color: #e8eef8 !important;
   background-color: #1b2a3e !important;
 }
@@ -122,13 +114,75 @@ body[data-theme="dark"] .header-panel p {
   color: #a9bad0 !important;
 }
 
-body[data-theme="light"] :is(td, .final-grade-value) {
+body[data-theme="light"] #statsContent td {
   border-color: #d7e0eb !important;
 }
 
-body[data-theme="dark"] :is(td, .final-grade-value) {
+body[data-theme="dark"] #statsContent td {
   border-color: #29384d !important;
-  background-color: #142237 !important;
+  background-color: #142237;
+}
+
+body[data-theme="dark"] #statsContent .kpi-card h3,
+body[data-theme="dark"] #statsContent .kpi-card .value {
+  color: #e8eef8 !important;
+}
+
+body[data-theme="dark"] #statsContent .card {
+  color: #e8eef8;
+}
+
+body[data-theme="dark"] #statsContent .card > div[style*="overflow-x"],
+body[data-theme="dark"] #cardRegistroAsistenciaFecha > div[style*="display: flex"] {
+  background-color: #0c192a !important;
+  border-color: #29384d !important;
+}
+
+body[data-theme="dark"] #cardRegistroAsistenciaFecha h3,
+body[data-theme="dark"] #cardRegistroAsistenciaFecha label,
+body[data-theme="dark"] #cardRegistroAsistenciaFecha th,
+body[data-theme="dark"] #regPaginacionInfo {
+  color: #e8eef8 !important;
+}
+
+body[data-theme="dark"] #cardRegistroAsistenciaFecha p,
+body[data-theme="dark"] #cardRegistroAsistenciaFecha td,
+body[data-theme="dark"] #cardRegistroAsistenciaFecha td[style] {
+  color: #b7c7dc !important;
+}
+
+body[data-theme="dark"] #cardRegistroAsistenciaFecha td:nth-child(2) {
+  color: #e8eef8 !important;
+}
+
+body[data-theme="dark"] #cardRegistroAsistenciaFecha th {
+  background: #1b2a3e !important;
+}
+
+body[data-theme="dark"] #cardRegistroAsistenciaFecha tr {
+  border-color: #29384d !important;
+}
+
+body[data-theme="dark"] #cardRegistroAsistenciaFecha input,
+body[data-theme="dark"] #cardRegistroAsistenciaFecha select {
+  color: #e8eef8 !important;
+  background-color: #111e30 !important;
+  border-color: #394b63 !important;
+}
+
+body[data-theme="dark"] #cardRegistroAsistenciaFecha input::placeholder {
+  color: #a9bad0 !important;
+}
+
+body[data-theme="dark"] .boletin-paper,
+body[data-theme="dark"] .recibo-paper {
+  color: #111827 !important;
+  background: #fff !important;
+}
+
+body[data-theme="dark"] .boletin-paper :is(h1, h2, h3, h4, p, label, th, td, span, strong),
+body[data-theme="dark"] .recibo-paper :is(h1, h2, h3, h4, p, label, th, td, span, strong) {
+  color: #111827;
 }
 
 body[data-theme="light"] #themeToggle {
