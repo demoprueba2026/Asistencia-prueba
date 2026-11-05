@@ -48,12 +48,18 @@ const setStudentStatus = async (id, status) => {
   const student = students.find((item) => String(item.id) === String(id));
   if (!student) return;
  
+  const teacherName = (typeof currentUser !== 'undefined' && currentUser?.name)
+    ? currentUser.name
+    : (JSON.parse(sessionStorage.getItem('activeUser') || '{}').name || '');
+  const now = new Date();
+  const timeFormatted = now.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+
   student.attendance = student.attendance || {};
-  student.attendance[selectedSubject] = status;
+  student.attendance[selectedSubject] = { status, teacher: teacherName, time: timeFormatted, label: getSubjectLabel(selectedYear, selectedSubject) };
   student.status = status;
   student.attendanceByDate = student.attendanceByDate || {};
   student.attendanceByDate[selectedDate] = student.attendanceByDate[selectedDate] || {};
-  student.attendanceByDate[selectedDate][selectedSubject] = status;
+  student.attendanceByDate[selectedDate][selectedSubject] = { status, teacher: teacherName, time: timeFormatted };
  
   saveData();
   const result = await sincronizarAsistencia(student, status);

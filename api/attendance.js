@@ -175,6 +175,7 @@ module.exports = async function handler(req, res) {
       subject_label: subjectLabel || subject,
       status,
       teacher: teacher || null,
+      created_at: new Date().toISOString(),
       email_sent_at: null,
     };
 

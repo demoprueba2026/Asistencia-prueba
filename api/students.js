@@ -106,27 +106,28 @@ module.exports = async function handler(req, res) {
       const attendanceDate = req.query?.date;
       if (attendanceDate && students.length) {
         const attendanceResponse = await supabaseFetch(
-          `/attendances?date=eq.${encodeURIComponent(String(attendanceDate))}&select=student_id,subject,status,email_sent_at`
+          `/attendances?date=eq.${encodeURIComponent(String(attendanceDate))}&select=*`
         );
         const attendanceRows = await attendanceResponse.json().catch(() => []);
-        if (!attendanceResponse.ok) {
-          return res.status(attendanceResponse.status).json({
-            error: attendanceRows.message || attendanceRows.error || 'No se pudo consultar la asistencia por fecha.',
+        if (attendanceResponse.ok && Array.isArray(attendanceRows)) {
+          const studentsById = new Map(students.map((student) => [String(student.id), student]));
+          students.forEach((student) => {
+            const attendanceByDate = student.attendance_by_date || student.attendanceByDate || {};
+            attendanceByDate[attendanceDate] = attendanceByDate[attendanceDate] || {};
+            student.attendance_by_date = attendanceByDate;
+          });
+          attendanceRows.forEach((row) => {
+            const student = studentsById.get(String(row.student_id));
+            if (!student) return;
+            const attendanceByDate = student.attendance_by_date;
+            attendanceByDate[attendanceDate][row.subject] = {
+              status: row.status,
+              teacher: row.teacher || null,
+              time: row.created_at || null,
+              label: row.subject_label || row.subject,
+            };
           });
         }
-
-        const studentsById = new Map(students.map((student) => [String(student.id), student]));
-        students.forEach((student) => {
-          const attendanceByDate = student.attendance_by_date || student.attendanceByDate || {};
-          attendanceByDate[attendanceDate] = {};
-          student.attendance_by_date = attendanceByDate;
-        });
-        attendanceRows.forEach((row) => {
-          const student = studentsById.get(String(row.student_id));
-          if (!student || row.email_sent_at) return;
-          const attendanceByDate = student.attendance_by_date;
-          attendanceByDate[attendanceDate][row.subject] = row.status;
-        });
       }
 
       if (Array.isArray(students)) {

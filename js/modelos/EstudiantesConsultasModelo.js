@@ -14,6 +14,7 @@ const findStudentById = (id) => {
 };
 
 const getAttendanceStatus = (student, subjectId) => {
-  return student.attendanceByDate?.[selectedDate]?.[subjectId] || '';
+  const val = student.attendanceByDate?.[selectedDate]?.[subjectId];
+  return typeof val === 'object' && val !== null ? (val.status || '') : (val || '');
 };
 

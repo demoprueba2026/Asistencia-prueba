@@ -205,8 +205,9 @@ const getStudentsFromSupabase = async (year, date) => {
   return students;
 };
 
-const writeAttendanceToSupabase = async ({ id, name, cedula, email, phone, year, subject, subjectLabel, status, date }) => {
+const writeAttendanceToSupabase = async ({ id, name, cedula, email, phone, year, subject, subjectLabel, status, date, teacher, time }) => {
   const attendanceDate = date || new Date().toISOString().slice(0, 10);
+  const markTime = time || new Date().toISOString();
   const studentPayload = {
     id,
     name,
@@ -231,9 +232,9 @@ const writeAttendanceToSupabase = async ({ id, name, cedula, email, phone, year,
   const currentStudent = Array.isArray(currentStudents) && currentStudents.length ? currentStudents[0] : {};
   const attendanceMap = currentStudent.attendance || {};
   const byDate = currentStudent.attendance_by_date || {};
-  attendanceMap[subject] = { status, label: subjectLabel || subject };
+  attendanceMap[subject] = { status, label: subjectLabel || subject, teacher: teacher || null, time: markTime };
   byDate[attendanceDate] = byDate[attendanceDate] || {};
-  byDate[attendanceDate][subject] = status;
+  byDate[attendanceDate][subject] = { status, teacher: teacher || null, time: markTime };
 
   await supabaseFetch(`/students?id=eq.${encodeURIComponent(id)}`, {
     method: 'PATCH',
@@ -257,6 +258,8 @@ const writeAttendanceToSupabase = async ({ id, name, cedula, email, phone, year,
     subject,
     subject_label: subjectLabel || subject,
     status,
+    teacher: teacher || null,
+    created_at: new Date().toISOString(),
   };
 
   if (Array.isArray(existingRows) && existingRows.length) {
@@ -626,9 +629,41 @@ app.post('/api/attendance', async (req, res) => {
   }
 });
 
-app.get('/api/attendance', (req, res) => {
+app.get('/api/attendance', async (req, res) => {
+  const { date, year, subject } = req.query || {};
+  if (date && IS_SUPABASE_CONFIGURED) {
+    try {
+      let query = `?select=*&order=created_at.asc&date=eq.${encodeURIComponent(String(date))}`;
+      if (subject && subject !== 'todas' && subject !== 'general') {
+        query += `&subject=eq.${encodeURIComponent(String(subject))}`;
+      }
+      const response = await supabaseFetch(`/attendances${query}`);
+      const data = await response.json().catch(() => []);
+      if (response.ok && Array.isArray(data)) {
+        return res.json(data);
+      }
+    } catch (e) {}
+  }
   const data = loadAttendanceData();
-  const year = req.query.year;
+  if (date) {
+    const records = [];
+    Object.values(data.students || {}).forEach((student) => {
+      const byDate = student.attendanceByDate?.[date] || {};
+      Object.entries(byDate).forEach(([sub, info]) => {
+        if (subject && subject !== 'todas' && sub !== subject) return;
+        records.push({
+          student_id: student.id,
+          student_name: student.name,
+          date,
+          subject: sub,
+          status: typeof info === 'object' ? (info.status || 'asistente') : info,
+          teacher: typeof info === 'object' ? info.teacher : null,
+          created_at: typeof info === 'object' ? info.time : null,
+        });
+      });
+    });
+    return res.json(records);
+  }
   const students = Object.values(data.students).filter((student) => !year || String(student.year) === String(year));
   res.json({ students, lastDailyEmailSentDate: data.lastDailyEmailSentDate });
 });
