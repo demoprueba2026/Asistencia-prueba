@@ -22,30 +22,30 @@ insert into staff_seed (
   (
     'prueba4', 'REEMPLAZAR-prueba4@dominio.com', 'Prof: David',
     '{"puedeVerEstudiantes":true,"puedeCargarNotas":true,"puedeMarcarAsistencia":true,"puedeAgregarEstudiantes":true,"puedeVerDatosPersonales":true,"puedeGestionarBoletas":true,"puedeGestionarActividades":true,"puedeVerReportes":true,"esAdmin":true}'::jsonb,
-    array[1,2,3,4,5], '["todas"]'::jsonb
+    array[1,2,3,4,5], '["todas"]'::jsonb, '{}'::jsonb
   ),
   (
     'Abraham Ramirez', 'REEMPLAZAR-abraham@dominio.com', 'Prof: Abrahan',
     '{"puedeVerEstudiantes":true,"puedeCargarNotas":true,"puedeMarcarAsistencia":true,"puedeAgregarEstudiantes":true,"puedeVerDatosPersonales":true}'::jsonb,
-    array[1,2,3,4,5], '["todas"]'::jsonb
+    array[1,2,3,4,5], '["todas"]'::jsonb, '{}'::jsonb
   ),
   (
-    'prueba3', 'REEMPLAZAR-prueba3@dominio.com', 'Administrador de Sistema',
+    'prueba3', 'ra', 'Administrador de Sistema',
     '{"puedeVerDatosPersonales":true,"puedeVerReportes":true,"soloAdmin":true}'::jsonb,
-    '{}'::integer[], '[]'::jsonb
+    '{}'::integer[], '[]'::jsonb, '{}'::jsonb
   ),
   (
-    'David', 'REEMPLAZAR-david@dominio.com', 'Prof: David',
+    'David', 'demoprueba2026@gmail.com', 'Prof: David',
     '{"puedeVerEstudiantes":true,"puedeCargarNotas":true,"puedeMarcarAsistencia":true,"puedeAgregarEstudiantes":true,"puedeVerDatosPersonales":true,"puedeGestionarBoletas":true,"puedeGestionarActividades":true,"puedeVerReportes":true,"esAdmin":true}'::jsonb,
-    array[1,2,3,4,5], '["todas"]'::jsonb
+    array[1,2,3,4,5], '["todas"]'::jsonb, '{}'::jsonb
   ),
   (
     'prueba2', 'REEMPLAZAR-prueba2@dominio.com', 'Prof: Control de esturdio',
     '{"puedeVerEstudiantes":true,"puedeCargarNotas":true,"puedeMarcarAsistencia":true,"puedeAgregarEstudiantes":true,"puedeGestionarActividades":true,"puedeVerDatosPersonales":true,"puedeVerReportes":true}'::jsonb,
-    array[1,2,3,4,5], '["todas"]'::jsonb
+    array[1,2,3,4,5], '["todas"]'::jsonb, '{}'::jsonb
   ),
   (
-    'profe1', 'REEMPLAZAR-profe1@dominio.com', 'Prof: Miriam',
+    'profe1', 'raix1034@gmail.com', 'Prof: Miriam',
     '{"puedeVerEstudiantes":true,"puedeCargarNotas":true,"puedeMarcarAsistencia":true}'::jsonb,
     array[1,2,3,4,5], '["orientacion-convivencia"]'::jsonb,
     '{"3":["orientacion-convivencia","crp"]}'::jsonb
@@ -53,52 +53,52 @@ insert into staff_seed (
   (
     'Tibisay Plaza', 'REEMPLAZAR-tibisay@dominio.com', 'Prof: Tibisay',
     '{"puedeVerEstudiantes":true,"puedeCargarNotas":true,"puedeMarcarAsistencia":true}'::jsonb,
-    array[1,2], '["matematicas"]'::jsonb
+    array[1,2], '["matematicas"]'::jsonb, '{}'::jsonb
   ),
   (
     'Yudisay Hernández', 'REEMPLAZAR-yudisay@dominio.com', 'Prof: Yudisay',
     '{"puedeVerEstudiantes":true,"puedeCargarNotas":true,"puedeMarcarAsistencia":true}'::jsonb,
-    array[1,2,3,4,5], '["castellano"]'::jsonb
+    array[1,2,3,4,5], '["castellano"]'::jsonb, '{}'::jsonb
   ),
   (
     'Lenis Ávila', 'REEMPLAZAR-lenis@dominio.com', 'Prof: Lenis',
     '{"puedeVerEstudiantes":true,"puedeCargarNotas":true,"puedeMarcarAsistencia":true}'::jsonb,
-    array[3,4,5], '["ingles"]'::jsonb
+    array[3,4,5], '["ingles"]'::jsonb, '{}'::jsonb
   ),
   (
     'Johana Pedron', 'REEMPLAZAR-johana@dominio.com', 'Prof: Johana',
     '{"puedeVerEstudiantes":true,"puedeCargarNotas":true,"puedeMarcarAsistencia":true}'::jsonb,
-    array[1,2,3,4,5], '["frances"]'::jsonb
+    array[1,2,3,4,5], '["frances"]'::jsonb, '{}'::jsonb
   ),
   (
     'Lidis Hernández', 'REEMPLAZAR-lidis@dominio.com', 'Prof: Lidis',
     '{"puedeVerEstudiantes":true,"puedeCargarNotas":true,"puedeMarcarAsistencia":true}'::jsonb,
-    array[1,2], '["ingles"]'::jsonb
+    array[1,2], '["ingles"]'::jsonb, '{}'::jsonb
   ),
   (
     'Yoxelith Camaripano', 'REEMPLAZAR-yoxelith@dominio.com', 'Prof: Yoxelith',
     '{"puedeVerEstudiantes":true,"puedeCargarNotas":true,"puedeMarcarAsistencia":true}'::jsonb,
-    array[1,2,3,4], '["ciencias-naturales","biologia"]'::jsonb
+    array[1,2,3,4], '["ciencias-naturales","biologia"]'::jsonb, '{}'::jsonb
   ),
   (
     'Alexis Serrano', 'REEMPLAZAR-alexis@dominio.com', 'Prof: Alexis',
     '{"puedeVerEstudiantes":true,"puedeCargarNotas":true,"puedeMarcarAsistencia":true}'::jsonb,
-    array[1,2,3,4,5], '["ghc"]'::jsonb
+    array[1,2,3,4,5], '["ghc"]'::jsonb, '{}'::jsonb
   ),
   (
     'Oriana Blanco', 'REEMPLAZAR-oriana@dominio.com', 'Prof: Oriana',
     '{"puedeVerEstudiantes":true,"puedeCargarNotas":true,"puedeMarcarAsistencia":true}'::jsonb,
-    array[1,2], '["arte-patrimonio"]'::jsonb
+    array[1,2], '["arte-patrimonio"]'::jsonb, '{}'::jsonb
   ),
   (
     'Leidy Gonzalez', 'REEMPLAZAR-leidy@dominio.com', 'Prof: Leidy',
     '{"puedeVerEstudiantes":true,"puedeCargarNotas":true,"puedeMarcarAsistencia":true}'::jsonb,
-    array[3,4,5], '["quimica"]'::jsonb
+    array[3,4,5], '["quimica"]'::jsonb, '{}'::jsonb
   ),
   (
     'Ricardo Salcedo', 'REEMPLAZAR-ricardo@dominio.com', 'Prof: Ricardo',
     '{"puedeVerEstudiantes":true,"puedeCargarNotas":true,"puedeMarcarAsistencia":true}'::jsonb,
-    array[1,2,3,4,5], '["educacion-fisica","formacion-soberania"]'::jsonb
+    array[1,2,3,4,5], '["educacion-fisica","formacion-soberania"]'::jsonb, '{}'::jsonb
   );
 
 do $$

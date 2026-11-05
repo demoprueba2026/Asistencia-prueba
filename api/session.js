@@ -2,6 +2,10 @@ const {
   SUPABASE_URL,
   SUPABASE_ANON_KEY,
   isConfigured,
+  getTestStaffConfig,
+  signInTestStaff,
+  refreshTestStaffSession,
+  isTestToken,
   serviceFetch,
   getStaffProfile,
   getAppUser,
@@ -44,7 +48,7 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method === 'DELETE') {
     const accessToken = String(req.headers?.authorization || '').match(/^Bearer\s+(.+)$/i)?.[1];
-    if (accessToken && isConfigured()) {
+    if (accessToken && !isTestToken(accessToken) && isConfigured()) {
       await fetch(`${SUPABASE_URL}/auth/v1/logout`, {
         method: 'POST',
         headers: {
@@ -58,18 +62,32 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST' && req.method !== 'PUT') {
     return res.status(405).json({ error: 'Método no permitido.' });
   }
-  if (!isConfigured()) {
-    return res.status(503).json({ error: 'Configura SUPABASE_URL, SUPABASE_ANON_KEY y SUPABASE_SERVICE_ROLE_KEY.' });
-  }
-
   try {
     const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const username = String(body.username || '').trim();
+    const password = String(body.password || '');
     let tokens;
     if (req.method === 'POST') {
-      const username = String(body.username || '').trim();
-      const password = String(body.password || '');
       if (!username || !password) return res.status(400).json({ error: 'Escribe usuario y contraseña.' });
 
+      const testConfig = getTestStaffConfig();
+      if (testConfig.error) return res.status(503).json({ error: testConfig.error });
+      const testLogin = signInTestStaff(username, password);
+      if (testLogin?.error) return res.status(testLogin.status).json({ error: testLogin.error });
+      if (testLogin?.session) return res.status(200).json(testLogin.session);
+    } else {
+      const testRefresh = refreshTestStaffSession(body.refreshToken);
+      if (testRefresh?.error) return res.status(testRefresh.status).json({ error: testRefresh.error });
+      if (testRefresh?.session) return res.status(200).json(testRefresh.session);
+    }
+
+    if (!isConfigured()) {
+      return res.status(503).json({
+        error: 'Configura Supabase Auth o una cuenta de prueba privada en el servidor.',
+      });
+    }
+
+    if (req.method === 'POST') {
       const staff = await findStaffByUsername(username);
       if (!staff) return res.status(401).json({ error: 'Usuario o contraseña incorrectos.' });
       const result = await exchangeAuthToken('password', { email: staff.auth_email, password });
