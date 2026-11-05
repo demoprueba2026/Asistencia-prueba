@@ -38,17 +38,34 @@ const redirectToLoginPage = () => {
   window.location.href = 'index.html';
 };
 
-const handleLogin = (e) => {
+const handleLogin = async (e) => {
   e.preventDefault();
 
-  const user = document.getElementById('loginUser').value.trim();
-  const pass = document.getElementById('loginPassword').value.trim();
+  const username = document.getElementById('loginUser').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const submitButton = e.currentTarget.querySelector('button[type="submit"], input[type="submit"]');
+  if (submitButton) submitButton.disabled = true;
 
-  if (TEACHERS[user] && TEACHERS[user].password === pass) {
-    currentUser = TEACHERS[user];
-    syncStudentManagementControls();
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/session`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      showToast(result.error || 'No se pudo iniciar sesión.');
+      return;
+    }
 
+    currentUser = result.user;
+    sessionStorage.setItem('authTokens', JSON.stringify({
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    }));
     sessionStorage.setItem('activeUser', JSON.stringify(currentUser));
+    await loadData();
+    syncStudentManagementControls();
 
     if (currentUser.soloReportes) {
       window.location.replace('reportes.html');
@@ -102,8 +119,11 @@ const handleLogin = (e) => {
     }
 
     showToast(`Bienvenido/a, ${currentUser.name}`);
-  } else {
-    showToast('Usuario o contraseña incorrectos');
+  } catch (error) {
+    console.error('Error al iniciar sesión:', error);
+    showToast('No se pudo conectar con el servicio de autenticación.');
+  } finally {
+    if (submitButton) submitButton.disabled = false;
   }
 };
 
@@ -145,4 +165,3 @@ const miFormulario = document.getElementById('loginForm');
 if (miFormulario) {
   miFormulario.addEventListener('submit', handleLogin);
 }
-

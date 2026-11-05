@@ -105,7 +105,9 @@ const closeAddStudentView = () => {
 
 const cerrarSesion = () => {
   currentUser = null;
+  window.closeAppSession?.();
   sessionStorage.removeItem('activeUser');
+  sessionStorage.removeItem('authTokens');
 
   if (!document.getElementById('landingView') || isRegistrationPage()) {
     redirectToLoginPage();
@@ -222,4 +224,3 @@ const getInitialData = () => {
   }
   return data;
 };
-

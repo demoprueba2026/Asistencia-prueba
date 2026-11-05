@@ -1,4 +1,6 @@
 const nodemailer = require('nodemailer');
+const crypto = require('crypto');
+const { requireStaff } = require('./lib/security');
 
 const SUPABASE_URL = (
   process.env.SUPABASE_URL ||
@@ -7,11 +9,7 @@ const SUPABASE_URL = (
 )
   .replace(/\/rest\/v1\/?$/, '')
   .replace(/\/$/, '');
-const SUPABASE_KEY =
-  process.env.SUPABASE_KEY ||
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SUPABASE_ANON_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const GMAIL_USER = process.env.GMAIL_USER;
 const GMAIL_PASS = process.env.GMAIL_PASS;
 const EMAIL_FROM = process.env.EMAIL_FROM || GMAIL_USER;
@@ -126,6 +124,18 @@ module.exports = async (req, res) => {
   if (req.method !== 'GET' && req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
     return;
+  }
+
+  const cronSecret = String(process.env.CRON_SECRET || '');
+  const providedSecret = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  const isTrustedCron = Boolean(
+    cronSecret
+    && providedSecret.length === cronSecret.length
+    && crypto.timingSafeEqual(Buffer.from(providedSecret), Buffer.from(cronSecret))
+  );
+  if (!isTrustedCron) {
+    const staffUser = await requireStaff(req, res, 'students.write');
+    if (!staffUser) return;
   }
 
   try {

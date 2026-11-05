@@ -5,6 +5,14 @@ const nodemailer = require('nodemailer');
 const dotenv = require('dotenv');
 const path = require('path');
 const fs = require('fs');
+const {
+  authenticateStaffRequest,
+  hasPermission,
+  getStudentPatchPermissions,
+  isYearAllowed,
+  isSubjectAllowed,
+  filterStudentFieldsForUser,
+} = require('./lib/security');
 
 dotenv.config();
 
@@ -21,11 +29,7 @@ const SUPABASE_URL = (
   ''
 ).replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '');
 
-const SUPABASE_KEY =
-  process.env.SUPABASE_KEY ||
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SUPABASE_ANON_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const ATTENDANCE_FILE = path.join(__dirname, 'attendance-data.json');
 const IS_SUPABASE_CONFIGURED = Boolean(SUPABASE_URL && SUPABASE_KEY);
 
@@ -51,6 +55,69 @@ const supabaseFetch = async (pathName, options = {}) => {
   ]);
 
   return response;
+};
+
+const authorizeStaff = (permission) => async (req, res, next) => {
+  try {
+    const result = await authenticateStaffRequest(req);
+    if (result.error) return res.status(result.status).json({ error: result.error });
+    const requiredPermission = typeof permission === 'function' ? permission(req) : permission;
+    if (requiredPermission && !hasPermission(result.user, requiredPermission)) {
+      return res.status(403).json({ error: 'No tienes permiso para realizar esta operación.' });
+    }
+    req.staffUser = result.user;
+    req.staffProfile = result.profile;
+    req.authUser = result.authUser;
+    return next();
+  } catch (error) {
+    console.error('Error verificando la sesión del personal:', error);
+    return res.status(503).json({ error: 'No se pudo verificar la sesión con Supabase Auth.' });
+  }
+};
+
+const getPortalStudentFields = (student) => {
+  const isExempt = String(student.cedula || '').trim().replace(/\D/g, '') === '28000002';
+  const isAuthorized = String(student.BoletaVisible || '').trim().toUpperCase() === 'SI' || isExempt;
+  const publicFields = {
+    id: student.id,
+    name: student.name,
+    cedula: student.cedula,
+    year: student.year,
+    BoletaVisible: isExempt ? 'SI' : student.BoletaVisible,
+  };
+  if (!isAuthorized) return publicFields;
+  return {
+    ...publicFields,
+    payment_status: isExempt ? 'pago' : (student.payment_status || student.paymentStatus || 'no_pago'),
+    paid_amount: isExempt ? Math.max(30, Number(student.paid_amount ?? student.paidAmount ?? 0)) : (student.paid_amount ?? student.paidAmount ?? 0),
+    payments: student.payments || {},
+    grades: student.grades || {},
+  };
+};
+
+const publicStudentLookup = async (req, res, next) => {
+  if (req.headers.authorization || (!req.query.id && !req.query.cedula)) return next();
+  try {
+    if (IS_SUPABASE_CONFIGURED) {
+      const filter = req.query.id
+        ? `id=eq.${encodeURIComponent(String(req.query.id))}`
+        : `cedula=eq.${encodeURIComponent(String(req.query.cedula))}`;
+      const columns = encodeURIComponent('id,name,cedula,year,"BoletaVisible",payment_status,paid_amount,payments,grades');
+      const response = await supabaseFetch(`/students?select=${columns}&${filter}&limit=1`);
+      const rows = await response.json().catch(() => []);
+      if (!response.ok) return res.status(response.status).json({ error: 'No se pudo consultar la boleta.' });
+      return res.json(Array.isArray(rows) ? rows.map(getPortalStudentFields) : []);
+    }
+
+    const data = loadAttendanceData();
+    const student = req.query.id
+      ? data.students[String(req.query.id)]
+      : Object.values(data.students).find((row) => String(row.cedula || '') === String(req.query.cedula));
+    return res.json(student ? [getPortalStudentFields(normalizeStudentRecord(student))] : []);
+  } catch (error) {
+    console.error('Error consultando la boleta por identificador:', error);
+    return res.status(500).json({ error: 'No se pudo consultar la boleta.' });
+  }
 };
 
 const loadAttendanceData = () => {
@@ -129,12 +196,12 @@ const syncLocalStudent = (student) => {
   saveAttendanceData(data);
 };
 
-const upsertStudentToSupabase = async (student) => {
+const createStudentInSupabase = async (student) => {
   const payload = [toSafeStudentPayload(student)];
-  const response = await supabaseFetch('/students?on_conflict=id', {
+  const response = await supabaseFetch('/students', {
     method: 'POST',
     body: JSON.stringify(payload),
-    headers: { Prefer: 'return=representation,resolution=merge-duplicates' },
+    headers: { Prefer: 'return=representation' },
   });
   const result = await response.json().catch(() => []);
   if (!response.ok) {
@@ -144,12 +211,15 @@ const upsertStudentToSupabase = async (student) => {
   return Array.isArray(result) && result.length ? normalizeStudentRecord(result[0], Number(student.year || 1)) : normalizeStudentRecord(payload[0], Number(student.year || 1));
 };
 
-const patchStudentToSupabase = async (id, changes) => {
+const patchStudentToSupabase = async (id, changes, allowedYears) => {
   const payload = { ...changes };
   if (payload.attendance !== undefined) payload.attendance = payload.attendance;
   if (payload.attendance_by_date !== undefined) payload.attendance_by_date = payload.attendance_by_date;
 
-  const response = await supabaseFetch(`/students?id=eq.${encodeURIComponent(id)}`, {
+  const yearFilter = Array.isArray(allowedYears)
+    ? `&year=in.(${allowedYears.map(Number).filter(Number.isInteger).join(',')})`
+    : '';
+  const response = await supabaseFetch(`/students?id=eq.${encodeURIComponent(id)}${yearFilter}`, {
     method: 'PATCH',
     body: JSON.stringify(payload),
     headers: { Prefer: 'return=representation' },
@@ -164,8 +234,11 @@ const patchStudentToSupabase = async (id, changes) => {
   return normalizeStudentRecord(result[0]);
 };
 
-const deleteStudentFromSupabase = async (id) => {
-  const response = await supabaseFetch(`/students?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' });
+const deleteStudentFromSupabase = async (id, allowedYears) => {
+  const yearFilter = Array.isArray(allowedYears)
+    ? `&year=in.(${allowedYears.map(Number).filter(Number.isInteger).join(',')})`
+    : '';
+  const response = await supabaseFetch(`/students?id=eq.${encodeURIComponent(id)}${yearFilter}`, { method: 'DELETE' });
   if (response.status === 204) return { success: true };
   const result = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -174,8 +247,13 @@ const deleteStudentFromSupabase = async (id) => {
   return result;
 };
 
-const getStudentsFromSupabase = async (year, date) => {
-  const query = year ? `?year=eq.${encodeURIComponent(String(year))}` : '';
+const getStudentsFromSupabase = async (year, date, allowedYears) => {
+  const yearFilter = year
+    ? `year=eq.${encodeURIComponent(String(year))}`
+    : Array.isArray(allowedYears)
+      ? `year=in.(${allowedYears.map(Number).filter(Number.isInteger).join(',')})`
+      : '';
+  const query = yearFilter ? `?${yearFilter}` : '';
   const response = await supabaseFetch(`/students${query}`);
   const result = await response.json().catch(() => []);
   if (!response.ok) {
@@ -400,27 +478,55 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
-app.get('/api/students', async (req, res) => {
+app.all('/api/session', (req, res) => require('./api/session')(req, res));
+
+app.get('/api/students', publicStudentLookup, authorizeStaff('students.read'), async (req, res) => {
   try {
+    if (req.query.date && !hasPermission(req.staffUser, 'attendance.read') && !hasPermission(req.staffUser, 'attendance.mark')) {
+      return res.status(403).json({ error: 'No tienes permiso para consultar registros de asistencia.' });
+    }
+    const year = req.query.year ? Number(req.query.year) : null;
+    if (year && !isYearAllowed(req.staffUser, year)) {
+      return res.status(403).json({ error: 'No tienes acceso a este año académico.' });
+    }
+    const allowedYears = req.staffUser.esAdmin ? undefined : req.staffUser.allowedYears;
+    if (!req.staffUser.esAdmin && !allowedYears.length) {
+      return res.status(403).json({ error: 'Esta cuenta no tiene años académicos asignados.' });
+    }
     if (IS_SUPABASE_CONFIGURED) {
-      const students = await getStudentsFromSupabase(req.query.year, req.query.date);
-      return res.json(students);
+      const students = await getStudentsFromSupabase(req.query.year, req.query.date, allowedYears);
+      return res.json(students.map((student) => filterStudentFieldsForUser(student, req.staffUser)));
     }
 
     const data = loadAttendanceData();
-    const year = req.query.year;
-    const students = Object.values(data.students).filter((student) => !year || String(student.year) === String(year));
-    return res.json(students);
+    const students = Object.values(data.students)
+      .filter((student) => !year || Number(student.year) === year)
+      .filter((student) => req.staffUser.esAdmin || allowedYears.map(Number).includes(Number(student.year)))
+      .map(normalizeStudentRecord);
+    return res.json(students.map((student) => filterStudentFieldsForUser(student, req.staffUser)));
   } catch (error) {
     console.error('Error cargando estudiantes:', error);
     return res.status(500).json({ error: error.message || 'No se pudo cargar la lista de estudiantes.' });
   }
 });
 
-app.post('/api/students', async (req, res) => {
+app.post('/api/students', authorizeStaff('students.write'), async (req, res) => {
   const { id, name, cedula, email, phone, year, BoletaVisible, paymentStatus, paidAmount, payments, grades } = req.body || {};
   if (!name || !year) {
     return res.status(400).json({ error: 'Falta nombre o año.' });
+  }
+  if (!isYearAllowed(req.staffUser, year)) {
+    return res.status(403).json({ error: 'No tienes acceso a este año académico.' });
+  }
+  if (hasGrades(grades) && !hasPermission(req.staffUser, 'students.grades')) {
+    return res.status(403).json({ error: 'No tienes permiso para registrar calificaciones.' });
+  }
+  const hasSensitivePayments = (payments && Object.keys(payments).length > 0)
+    || Number(paidAmount) > 0
+    || (paymentStatus && paymentStatus !== 'no_pago')
+    || BoletaVisible === 'SI';
+  if (hasSensitivePayments && !hasPermission(req.staffUser, 'payments.write')) {
+    return res.status(403).json({ error: 'No tienes permiso para modificar pagos o autorizar boletas.' });
   }
 
   try {
@@ -441,30 +547,49 @@ app.post('/api/students', async (req, res) => {
     };
 
     if (IS_SUPABASE_CONFIGURED) {
-      const savedStudent = await upsertStudentToSupabase(student);
+      const savedStudent = await createStudentInSupabase(student);
       syncLocalStudent(savedStudent);
-      return res.status(201).json(savedStudent);
+      return res.status(201).json(filterStudentFieldsForUser(savedStudent, req.staffUser));
     }
 
     const data = loadAttendanceData();
     const studentId = student.id;
-    const existing = data.students[studentId] || { id: studentId, attendance: {}, attendanceByDate: {} };
-    const merged = { ...existing, ...student };
-    data.students[studentId] = merged;
+    if (data.students[studentId]) {
+      return res.status(409).json({ error: 'Ya existe un estudiante con ese identificador.' });
+    }
+    data.students[studentId] = student;
     saveAttendanceData(data);
-    return res.status(201).json(merged);
+    return res.status(201).json(filterStudentFieldsForUser(student, req.staffUser));
   } catch (error) {
     console.error('Error guardando estudiante:', error);
     return res.status(500).json({ error: error.message || 'No se pudo guardar el estudiante.' });
   }
 });
 
-app.patch('/api/students', async (req, res) => {
+app.patch('/api/students', authorizeStaff((req) => getStudentPatchPermissions(req.body)), async (req, res) => {
   const { id, name, cedula, email, phone, year, BoletaVisible, payments, paymentStatus, paidAmount, grades } = req.body || {};
   if (!id) {
     return res.status(400).json({ error: 'Falta id del estudiante.' });
   }
-
+  if (year !== undefined && !isYearAllowed(req.staffUser, year)) {
+    return res.status(403).json({ error: 'No tienes acceso a este año académico.' });
+  }
+  const hasPaymentChange = BoletaVisible !== undefined
+    || paymentStatus !== undefined
+    || paidAmount !== undefined
+    || payments !== undefined;
+  if (hasPaymentChange && !hasPermission(req.staffUser, 'payments.write')) {
+    return res.status(403).json({ error: 'No tienes permiso para modificar pagos o autorizar boletas.' });
+  }
+  if (req.body.attendance !== undefined || req.body.attendanceByDate !== undefined) {
+    return res.status(403).json({ error: 'Las asistencias deben modificarse desde el registro de asistencia.' });
+  }
+  const allowedYears = req.staffUser.esAdmin
+    ? undefined
+    : req.staffUser.allowedYears.map(Number).filter(Number.isInteger);
+  if (!req.staffUser.esAdmin && !allowedYears.length) {
+    return res.status(403).json({ error: 'Esta cuenta no tiene años académicos asignados.' });
+  }
   try {
     const changes = {
       name,
@@ -491,15 +616,18 @@ app.patch('/api/students', async (req, res) => {
     });
 
     if (IS_SUPABASE_CONFIGURED) {
-      const updated = await patchStudentToSupabase(id, changes);
+      const updated = await patchStudentToSupabase(id, changes, allowedYears);
       syncLocalStudent(updated);
-      return res.json(updated);
+      return res.json(filterStudentFieldsForUser(updated, req.staffUser));
     }
 
     const data = loadAttendanceData();
     const student = data.students[id];
     if (!student) {
       return res.status(404).json({ error: 'Estudiante no encontrado.' });
+    }
+    if (!isYearAllowed(req.staffUser, student.year)) {
+      return res.status(403).json({ error: 'No tienes acceso a este año académico.' });
     }
     if (name !== undefined) student.name = name;
     if (cedula !== undefined) student.cedula = cedula;
@@ -513,22 +641,28 @@ app.patch('/api/students', async (req, res) => {
     if (paidAmount !== undefined) student.paidAmount = paidAmount;
     data.students[id] = student;
     saveAttendanceData(data);
-    return res.json(student);
+    return res.json(filterStudentFieldsForUser(student, req.staffUser));
   } catch (error) {
     console.error('Error actualizando estudiante:', error);
     return res.status(500).json({ error: error.message || 'No se pudo actualizar el estudiante.' });
   }
 });
 
-app.delete('/api/students', async (req, res) => {
+app.delete('/api/students', authorizeStaff('students.write'), async (req, res) => {
   const id = req.query.id || req.body?.id;
   if (!id) {
     return res.status(400).json({ error: 'Falta id del estudiante.' });
   }
+  if (!req.staffUser.esAdmin && !req.staffUser.allowedYears.length) {
+    return res.status(403).json({ error: 'Esta cuenta no tiene años académicos asignados.' });
+  }
 
   try {
     if (IS_SUPABASE_CONFIGURED) {
-      const result = await deleteStudentFromSupabase(id);
+      const result = await deleteStudentFromSupabase(
+        id,
+        req.staffUser.esAdmin ? undefined : req.staffUser.allowedYears
+      );
       const data = loadAttendanceData();
       delete data.students[id];
       saveAttendanceData(data);
@@ -539,6 +673,9 @@ app.delete('/api/students', async (req, res) => {
     if (!data.students[id]) {
       return res.status(404).json({ error: 'Estudiante no encontrado.' });
     }
+    if (!isYearAllowed(req.staffUser, data.students[id].year)) {
+      return res.status(403).json({ error: 'No tienes acceso a este año académico.' });
+    }
     delete data.students[id];
     saveAttendanceData(data);
     return res.json({ success: true, id });
@@ -548,16 +685,20 @@ app.delete('/api/students', async (req, res) => {
   }
 });
 
-app.get('/api/sync-state', async (req, res) => {
+app.get('/api/sync-state', authorizeStaff('students.read'), async (req, res) => {
   try {
+    if (!req.staffUser.esAdmin && !req.staffUser.allowedYears.length) {
+      return res.status(403).json({ error: 'Esta cuenta no tiene años académicos asignados.' });
+    }
     const students = IS_SUPABASE_CONFIGURED
-      ? await getStudentsFromSupabase()
-      : Object.values(loadAttendanceData().students);
+      ? await getStudentsFromSupabase(undefined, undefined, req.staffUser.esAdmin ? undefined : req.staffUser.allowedYears)
+      : Object.values(loadAttendanceData().students)
+        .filter((student) => req.staffUser.esAdmin || req.staffUser.allowedYears.map(Number).includes(Number(student.year)))
     const years = {};
     students.forEach((student) => {
       const year = Number(student.year || 1);
       if (!years[year]) years[year] = { students: [] };
-      years[year].students.push(student);
+      years[year].students.push(filterStudentFieldsForUser(student, req.staffUser));
     });
     res.json({ years, boletaVisibleState: 'NO' });
   } catch (error) {
@@ -566,76 +707,104 @@ app.get('/api/sync-state', async (req, res) => {
   }
 });
 
-app.post('/api/attendance', async (req, res) => {
-  const { id, name, cedula, email, phone, year, subject, subjectLabel, status, date, teacher, time } = req.body || {};
-  if (!id || !name || !email || !year || !subject || !status) {
-    return res.status(400).json({ error: 'Falta id, nombre, correo, año, materia o estado.' });
+app.post('/api/attendance', authorizeStaff('attendance.mark'), async (req, res) => {
+  const { id, year, subject, subjectLabel, status, date, time } = req.body || {};
+  if (!id || !year || !subject || !status) {
+    return res.status(400).json({ error: 'Falta id, año, materia o estado.' });
+  }
+  if (!isYearAllowed(req.staffUser, year)) {
+    return res.status(403).json({ error: 'No tienes acceso a este año académico.' });
+  }
+  if (!isSubjectAllowed(req.staffUser, year, subject)) {
+    return res.status(403).json({ error: 'No tienes permiso para registrar esta materia.' });
+  }
+  if (!['asistente', 'inasistente'].includes(String(status).toLowerCase())) {
+    return res.status(400).json({ error: 'El estado de asistencia no es válido.' });
   }
 
   try {
+    const data = loadAttendanceData();
+    const currentStudent = IS_SUPABASE_CONFIGURED
+      ? (await getStudentsFromSupabase(year)).find((student) => String(student.id) === String(id))
+      : data.students[String(id)];
+    if (!currentStudent) return res.status(404).json({ error: 'No se encontró el estudiante.' });
+    if (Number(currentStudent.year) !== Number(year)) {
+      return res.status(403).json({ error: 'El estudiante no pertenece al año académico seleccionado.' });
+    }
+
+    const name = currentStudent.name;
+    const cedula = currentStudent.cedula || '';
+    const email = currentStudent.email || '';
+    const phone = currentStudent.phone || '';
+    const teacher = req.staffUser.name;
     const attendanceDate = date || new Date().toISOString().slice(0, 10);
     const markTime = time || new Date().toISOString();
-    const student = {
-      id,
-      name,
-      cedula: cedula || '',
-      email,
-      phone: phone || '',
-      year: Number(year),
-      attendance: { [subject]: { status, label: subjectLabel || subject, teacher, time: markTime } },
-      attendanceByDate: {
-        [attendanceDate]: { [subject]: { status, teacher, time: markTime } },
-      },
-    };
-
+    const normalizedStatus = String(status).toLowerCase();
     if (IS_SUPABASE_CONFIGURED) {
-      await writeAttendanceToSupabase({ id, name, cedula, email, phone, year, subject, subjectLabel, status, date: attendanceDate, teacher });
-      const data = loadAttendanceData();
-      const currentStudent = data.students[id] || { id, attendance: {}, attendanceByDate: {} };
+      await writeAttendanceToSupabase({
+        id, name, cedula, email, phone, year, subject, subjectLabel,
+        status: normalizedStatus, date: attendanceDate, teacher,
+      });
       currentStudent.name = name;
       currentStudent.email = email;
       currentStudent.phone = phone || '';
       currentStudent.year = Number(year);
       currentStudent.attendance = currentStudent.attendance || {};
-      currentStudent.attendance[subject] = { status, label: subjectLabel || subject, teacher, time: markTime };
+      currentStudent.attendance[subject] = { status: normalizedStatus, label: subjectLabel || subject, teacher, time: markTime };
       currentStudent.attendanceByDate = currentStudent.attendanceByDate || {};
       currentStudent.attendanceByDate[attendanceDate] = currentStudent.attendanceByDate[attendanceDate] || {};
-      currentStudent.attendanceByDate[attendanceDate][subject] = { status, teacher, time: markTime };
+      currentStudent.attendanceByDate[attendanceDate][subject] = { status: normalizedStatus, teacher, time: markTime };
       data.students[id] = currentStudent;
       saveAttendanceData(data);
 
-      return res.json({ ...currentStudent, success: true });
+      return res.json({ ...filterStudentFieldsForUser(currentStudent, req.staffUser), success: true });
     }
 
-    const data = loadAttendanceData();
-    const currentStudent = data.students[id] || { id, name, email, phone: phone || '', year: Number(year), attendance: {} };
     currentStudent.name = name;
     currentStudent.cedula = cedula || currentStudent.cedula || '';
     currentStudent.email = email;
     currentStudent.phone = phone || currentStudent.phone || '';
     currentStudent.year = Number(year);
     currentStudent.attendance = currentStudent.attendance || {};
-    currentStudent.attendance[subject] = { status, label: subjectLabel || subject, teacher, time: markTime };
+    currentStudent.attendance[subject] = { status: normalizedStatus, label: subjectLabel || subject, teacher, time: markTime };
     currentStudent.attendanceByDate = currentStudent.attendanceByDate || {};
     currentStudent.attendanceByDate[attendanceDate] = currentStudent.attendanceByDate[attendanceDate] || {};
-    currentStudent.attendanceByDate[attendanceDate][subject] = { status, teacher, time: markTime };
+    currentStudent.attendanceByDate[attendanceDate][subject] = { status: normalizedStatus, teacher, time: markTime };
     data.students[id] = currentStudent;
     saveAttendanceData(data);
 
-    return res.json({ ...currentStudent, success: true });
+    return res.json({ ...filterStudentFieldsForUser(currentStudent, req.staffUser), success: true });
   } catch (error) {
     console.error('Error guardando asistencia:', error);
     return res.status(500).json({ error: error.message || 'No se pudo guardar la asistencia.' });
   }
 });
 
-app.get('/api/attendance', async (req, res) => {
+app.get('/api/attendance', authorizeStaff('attendance.read'), async (req, res) => {
   const { date, year, subject } = req.query || {};
+  const allowedYears = req.staffUser.esAdmin ? undefined : req.staffUser.allowedYears.map(Number);
+  if (!req.staffUser.esAdmin && !allowedYears.length) {
+    return res.status(403).json({ error: 'Esta cuenta no tiene años académicos asignados.' });
+  }
   if (date && IS_SUPABASE_CONFIGURED) {
     try {
       let query = `?select=*&order=created_at.asc&date=eq.${encodeURIComponent(String(date))}`;
       if (subject && subject !== 'todas' && subject !== 'general') {
         query += `&subject=eq.${encodeURIComponent(String(subject))}`;
+      }
+      if (allowedYears) {
+        const rosterResponse = await supabaseFetch(
+          `/students?select=id&year=in.(${allowedYears.join(',')})`
+        );
+        const roster = await rosterResponse.json().catch(() => []);
+        if (!rosterResponse.ok) {
+          return res.status(rosterResponse.status).json({ error: 'No se pudieron verificar los años autorizados.' });
+        }
+        const ids = Array.isArray(roster)
+          ? roster.map((student) => encodeURIComponent(String(student.id)))
+          : [];
+        if (!ids.length) return res.json([]);
+        query += `&student_id=in.(${ids.join(',')})`;
       }
       const response = await supabaseFetch(`/attendances${query}`);
       const data = await response.json().catch(() => []);
@@ -648,6 +817,7 @@ app.get('/api/attendance', async (req, res) => {
   if (date) {
     const records = [];
     Object.values(data.students || {}).forEach((student) => {
+      if (!req.staffUser.esAdmin && !isYearAllowed(req.staffUser, student.year)) return;
       const byDate = student.attendanceByDate?.[date] || {};
       Object.entries(byDate).forEach(([sub, info]) => {
         if (subject && subject !== 'todas' && sub !== subject) return;
@@ -664,11 +834,38 @@ app.get('/api/attendance', async (req, res) => {
     });
     return res.json(records);
   }
-  const students = Object.values(data.students).filter((student) => !year || String(student.year) === String(year));
+  if (year && !isYearAllowed(req.staffUser, year)) {
+    return res.status(403).json({ error: 'No tienes acceso a este año académico.' });
+  }
+  const students = Object.values(data.students)
+    .filter((student) => !year || String(student.year) === String(year))
+    .filter((student) => req.staffUser.esAdmin || allowedYears.includes(Number(student.year)));
+  if (!req.staffUser.puedeVerDatosPersonales && !req.staffUser.esAdmin) {
+    students.forEach((student) => {
+      delete student.cedula;
+      delete student.email;
+      delete student.phone;
+      delete student.payments;
+      delete student.paymentStatus;
+      delete student.paidAmount;
+    });
+  }
+  if (!hasPermission(req.staffUser, 'students.grades')) {
+    students.forEach((student) => {
+      delete student.grades;
+    });
+  }
+  if (!hasPermission(req.staffUser, 'attendance.read') && !hasPermission(req.staffUser, 'attendance.mark')) {
+    students.forEach((student) => {
+      delete student.attendance;
+      delete student.attendanceByDate;
+      delete student.attendance_by_date;
+    });
+  }
   res.json({ students, lastDailyEmailSentDate: data.lastDailyEmailSentDate });
 });
 
-app.post('/api/send-daily-emails', async (req, res) => {
+app.post('/api/send-daily-emails', authorizeStaff('students.write'), async (req, res) => {
   try {
     await sendDailyAttendanceEmails();
     res.json({ success: true, message: 'Envio diario ejecutado.' });
@@ -687,7 +884,7 @@ app.all('/api/cron-daily-emails', async (req, res) => {
   }
 });
 
-app.post('/api/send-whatsapp', async (req, res) => {
+app.post('/api/send-whatsapp', authorizeStaff('students.write'), async (req, res) => {
   const { to, message } = req.body;
 
   if (!to || !message) {
@@ -722,7 +919,7 @@ app.post('/api/send-whatsapp', async (req, res) => {
   }
 });
 
-app.post('/api/send-email', async (req, res) => {
+app.post('/api/send-email', authorizeStaff('students.write'), async (req, res) => {
   const { to, subject, message, fromName } = req.body;
 
   if (!to || !subject || !message) {

@@ -22,7 +22,9 @@ const abrirAdminNestor = async () => {
 const cerrarAdminNestor = () => {
   if (currentUser && currentUser.soloAdmin) {
     currentUser = null;
+    window.closeAppSession?.();
     sessionStorage.removeItem('activeUser');
+    sessionStorage.removeItem('authTokens');
     redirectToLoginPage();
     return;
   }
@@ -48,7 +50,10 @@ const autorizarBoletaEstudiante = async (studentId, year) => {
   const boletaAutorizada = String(student.BoletaVisible || '').toUpperCase().trim() === 'SI';
   student.BoletaVisible = boletaAutorizada ? 'NO' : 'SI';
   saveData();
-  const savedStudent = await sincronizarEstudiante(student, 'PATCH');
+  const savedStudent = await sincronizarEstudiante({
+    id: student.id,
+    BoletaVisible: student.BoletaVisible,
+  }, 'PATCH');
   if (!savedStudent) {
     student.BoletaVisible = boletaAutorizada ? 'SI' : 'NO';
     saveData();
@@ -70,7 +75,12 @@ const cambiarEstadoPago = async (studentId, year, estado) => {
   student.paidAmount = monto;
 
   saveData();
-  await sincronizarEstudiante(student, 'PATCH');
+  await sincronizarEstudiante({
+    id: student.id,
+    payments: student.payments,
+    paymentStatus: student.paymentStatus,
+    paidAmount: student.paidAmount,
+  }, 'PATCH');
   actualizarVistaAdminNestor();
   renderizarGraficasAdmin();
   if (estado !== 'no_pago') {
@@ -136,7 +146,12 @@ const guardarAbono = async () => {
     student.paymentStatus = estado;
     student.paidAmount = normalizarMontoPago(monto);
     saveData();
-    await sincronizarEstudiante(student, 'PATCH');
+    await sincronizarEstudiante({
+      id: student.id,
+      payments: student.payments,
+      paymentStatus: student.paymentStatus,
+      paidAmount: student.paidAmount,
+    }, 'PATCH');
     actualizarVistaAdminNestor();
     renderizarGraficasAdmin();
     if (estado !== 'no_pago') {
@@ -146,4 +161,3 @@ const guardarAbono = async () => {
     showToast(`Abono de $${monto} guardado para ${name} (${nombrePeriodo})`);
   }
 };
-

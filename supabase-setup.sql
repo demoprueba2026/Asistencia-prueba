@@ -95,57 +95,49 @@ create index if not exists idx_attendances_student_id on public.attendances (stu
 alter table public.students enable row level security;
 alter table public.attendances enable row level security;
 
--- Políticas para 'students'
-drop policy if exists "allow students select" on public.students;
-create policy "allow students select"
-on public.students for select
-to anon, authenticated
-using (true);
+do $$
+declare
+  existing_policy record;
+begin
+  for existing_policy in
+    select schemaname, tablename, policyname
+    from pg_policies
+    where schemaname = 'public'
+      and tablename in ('students', 'attendances')
+  loop
+    execute format(
+      'drop policy if exists %I on %I.%I',
+      existing_policy.policyname,
+      existing_policy.schemaname,
+      existing_policy.tablename
+    );
+  end loop;
+end
+$$;
 
-drop policy if exists "allow students insert" on public.students;
-create policy "allow students insert"
-on public.students for insert
-to anon, authenticated
-with check (true);
+-- Las tablas solo se consultan desde el backend privado con service_role.
+revoke all privileges on table public.students, public.attendances
+  from public, anon, authenticated;
+grant all privileges on table public.students, public.attendances to service_role;
+grant usage, select on all sequences in schema public to service_role;
 
-drop policy if exists "allow students update" on public.students;
-create policy "allow students update"
-on public.students for update
-to anon, authenticated
-using (true)
-with check (true);
+create table if not exists public.staff_access (
+  auth_user_id uuid primary key references auth.users(id) on delete cascade,
+  login_username text not null unique,
+  auth_email text not null unique,
+  display_name text not null,
+  active boolean not null default true,
+  role jsonb not null default '{}'::jsonb,
+  allowed_years integer[] not null default '{}'::integer[],
+  allowed_subjects jsonb not null default '[]'::jsonb,
+  allowed_subjects_by_year jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
 
-drop policy if exists "allow students delete" on public.students;
-create policy "allow students delete"
-on public.students for delete
-to anon, authenticated
-using (true);
-
--- Políticas para 'attendances'
-drop policy if exists "allow attendance select" on public.attendances;
-create policy "allow attendance select"
-on public.attendances for select
-to anon, authenticated
-using (true);
-
-drop policy if exists "allow attendance insert" on public.attendances;
-create policy "allow attendance insert"
-on public.attendances for insert
-to anon, authenticated
-with check (true);
-
-drop policy if exists "allow attendance update" on public.attendances;
-create policy "allow attendance update"
-on public.attendances for update
-to anon, authenticated
-using (true)
-with check (true);
-
-drop policy if exists "allow attendance delete" on public.attendances;
-create policy "allow attendance delete"
-on public.attendances for delete
-to anon, authenticated
-using (true);
+alter table public.staff_access enable row level security;
+revoke all privileges on table public.staff_access from public, anon, authenticated;
+grant all privileges on table public.staff_access to service_role;
+grant usage, select on all sequences in schema public to service_role;
 
 -- ------------------------------------------------------------------------------
 -- 5. RECARGA DE CACHÉ DE POSTGREST
@@ -191,4 +183,3 @@ insert into public.students (
   '{"castellano": {"1er": "18", "2do": "17", "3er": "19", "Final": "18"}, "ingles": {"1er": "16", "2do": "17", "3er": "18", "Final": "17"}, "matematicas": {"1er": "19", "2do": "18", "3er": "20", "Final": "19"}, "educacion-fisica": {"1er": "20", "2do": "20", "3er": "20", "Final": "20"}, "arte-patrimonio": {"1er": "17", "2do": "18", "3er": "17", "Final": "17"}, "ciencias-naturales": {"1er": "18", "2do": "19", "3er": "18", "Final": "18"}, "ghc": {"1er": "17", "2do": "17", "3er": "18", "Final": "17"}, "orientacion-convivencia": {"1er": "20", "2do": "20", "3er": "20", "Final": "20"}, "frances": {"1er": "A", "2do": "A", "3er": "A", "Final": "A"}, "crp": {"1er": "A", "2do": "A", "3er": "A", "Final": "A"}}'::jsonb
 )
 on conflict (id) do nothing;
-

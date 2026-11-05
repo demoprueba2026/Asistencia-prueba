@@ -108,7 +108,13 @@ const saveEditedStudent = async () => {
   student.email = email;
   student.phone = phone;
   saveData();
-  const savedStudent = await sincronizarEstudiante(student, 'PATCH');
+  const savedStudent = await sincronizarEstudiante({
+    id: student.id,
+    name,
+    cedula,
+    email,
+    phone,
+  }, 'PATCH');
   if (!savedStudent) {
     Object.assign(student, previousStudent);
     saveData();

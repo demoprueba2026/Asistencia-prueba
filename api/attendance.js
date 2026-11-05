@@ -2,6 +2,14 @@ try {
   require('dotenv').config();
 } catch (e) {}
 
+const {
+  SUPABASE_SERVICE_ROLE_KEY,
+  requireStaff,
+  isYearAllowed,
+  isSubjectAllowed,
+  filterStudentFieldsForUser,
+} = require('../lib/security');
+
 let rawUrl = (
   process.env.SUPABASE_URL ||
   process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -14,11 +22,7 @@ if (rawUrl && !/^https?:\/\//i.test(rawUrl) && !/^postgres/i.test(rawUrl)) {
 const SUPABASE_URL = rawUrl;
 
 const SUPABASE_KEY = (
-  process.env.SUPABASE_KEY ||
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SUPABASE_ANON_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  process.env.SUPABASE_API_KEY ||
+  SUPABASE_SERVICE_ROLE_KEY ||
   ''
 ).trim().replace(/^["']|["']$/g, '');
 
@@ -63,16 +67,38 @@ module.exports = async function handler(req, res) {
   }
 
   if (req.method === 'GET') {
+    const staffUser = await requireStaff(req, res, 'attendance.read');
+    if (!staffUser) return;
     if (!SUPABASE_URL || !SUPABASE_KEY) {
       return res.status(500).json({ error: 'Falta configurar Supabase.' });
     }
     const { date, subject } = req.query || {};
     try {
+      let studentFilter = '';
+      if (!staffUser.esAdmin) {
+        const allowedYears = staffUser.allowedYears.map(Number).filter(Number.isInteger);
+        if (!allowedYears.length) {
+          return res.status(403).json({ error: 'Esta cuenta no tiene años académicos asignados.' });
+        }
+        const rosterResponse = await supabaseFetch(
+          `/students?select=id&year=in.(${allowedYears.join(',')})`
+        );
+        const roster = await rosterResponse.json().catch(() => []);
+        if (!rosterResponse.ok) {
+          return res.status(rosterResponse.status).json({ error: 'No se pudieron verificar los años autorizados.' });
+        }
+        const ids = Array.isArray(roster)
+          ? roster.map((student) => encodeURIComponent(String(student.id)))
+          : [];
+        if (!ids.length) return res.status(200).json([]);
+        studentFilter = `&student_id=in.(${ids.join(',')})`;
+      }
       let query = `?select=*&order=created_at.asc`;
       if (date) query += `&date=eq.${encodeURIComponent(String(date))}`;
       if (subject && subject !== 'todas' && subject !== 'general') {
         query += `&subject=eq.${encodeURIComponent(String(subject))}`;
       }
+      query += studentFilter;
       const response = await supabaseFetch(`/attendances${query}`);
       const data = await response.json().catch(() => []);
       if (!response.ok) {
@@ -90,7 +116,7 @@ module.exports = async function handler(req, res) {
 
   if (!SUPABASE_URL || !SUPABASE_KEY) {
     return res.status(500).json({
-      error: 'Falta configurar SUPABASE_URL o SUPABASE_KEY en las variables de entorno.',
+      error: 'Falta configurar SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en las variables de entorno.',
       hint: 'Agrégalas en Vercel (Project Settings -> Environment Variables) o en el archivo .env si ejecutas en local.'
     });
   }
@@ -98,21 +124,45 @@ module.exports = async function handler(req, res) {
   try {
     const body = await parseBody(req);
     const { id, name, cedula, email, phone, year, subject, subjectLabel, status, date, teacher, time } = body || {};
+    const staffUser = await requireStaff(req, res, 'attendance.mark');
+    if (!staffUser) return;
 
     if (!id || !name || !year || !subject || !status) {
       return res.status(400).json({ error: 'Falta id, nombre, año, materia o estado de asistencia.' });
     }
+    if (!isYearAllowed(staffUser, year)) {
+      return res.status(403).json({ error: 'No tienes acceso a este año académico.' });
+    }
+    if (!isSubjectAllowed(staffUser, year, subject)) {
+      return res.status(403).json({ error: 'No tienes permiso para registrar esta materia.' });
+    }
+    if (!['asistente', 'inasistente'].includes(String(status).toLowerCase())) {
+      return res.status(400).json({ error: 'El estado de asistencia no es válido.' });
+    }
+
+    const currentStudentResponse = await supabaseFetch(
+      `/students?id=eq.${encodeURIComponent(String(id))}&select=*`
+    );
+    const currentStudents = await currentStudentResponse.json().catch(() => []);
+    const currentStudent = Array.isArray(currentStudents) ? currentStudents[0] : null;
+    if (!currentStudent) {
+      return res.status(404).json({ error: 'No se encontró el estudiante para registrar la asistencia.' });
+    }
+    if (Number(currentStudent.year) !== Number(year)) {
+      return res.status(403).json({ error: 'El estudiante no pertenece al año académico seleccionado.' });
+    }
 
     const attendanceDate = date || new Date().toISOString().slice(0, 10);
     const markTime = time || new Date().toISOString();
+    const trustedTeacher = staffUser.name;
 
     const studentPayload = {
       id: String(id),
-      name,
-      cedula: cedula || null,
-      email,
-      phone: phone || null,
-      year: Number(year),
+      name: currentStudent.name,
+      cedula: currentStudent.cedula || null,
+      email: currentStudent.email || null,
+      phone: currentStudent.phone || null,
+      year: Number(currentStudent.year),
     };
 
     const studentUpsert = await supabaseFetch('/students?on_conflict=id', {
@@ -128,23 +178,19 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const currentStudentResponse = await supabaseFetch(`/students?id=eq.${encodeURIComponent(String(id))}&select=*`);
-    const currentStudents = await currentStudentResponse.json().catch(() => []);
-    const currentStudent = Array.isArray(currentStudents) && currentStudents.length ? currentStudents[0] : {};
-
     const attendanceMap = currentStudent.attendance || {};
     attendanceMap[subject] = {
-      status,
+      status: String(status).toLowerCase(),
       label: subjectLabel || subject,
-      teacher: teacher || null,
+      teacher: trustedTeacher,
       time: markTime,
     };
 
     const attendanceByDateMap = currentStudent.attendance_by_date || {};
     attendanceByDateMap[attendanceDate] = attendanceByDateMap[attendanceDate] || {};
     attendanceByDateMap[attendanceDate][subject] = {
-      status,
-      teacher: teacher || null,
+      status: String(status).toLowerCase(),
+      teacher: trustedTeacher,
       time: markTime,
     };
 
@@ -154,11 +200,11 @@ module.exports = async function handler(req, res) {
       body: JSON.stringify({
         attendance: attendanceMap,
         attendance_by_date: attendanceByDateMap,
-        name,
-        cedula: cedula || currentStudent.cedula || null,
-        email: email || currentStudent.email || null,
-        phone: phone || currentStudent.phone || null,
-        year: Number(year),
+        name: currentStudent.name,
+        cedula: currentStudent.cedula || null,
+        email: currentStudent.email || null,
+        phone: currentStudent.phone || null,
+        year: Number(currentStudent.year),
       }),
     });
     const patchedStudent = await patchStudent.json().catch(() => []);
@@ -173,8 +219,8 @@ module.exports = async function handler(req, res) {
       date: attendanceDate,
       subject,
       subject_label: subjectLabel || subject,
-      status,
-      teacher: teacher || null,
+      status: String(status).toLowerCase(),
+      teacher: trustedTeacher,
       created_at: new Date().toISOString(),
       email_sent_at: null,
     };
@@ -206,7 +252,10 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
-      student: Array.isArray(patchedStudent) ? patchedStudent[0] : patchedStudent,
+      student: filterStudentFieldsForUser(
+        Array.isArray(patchedStudent) ? patchedStudent[0] : patchedStudent,
+        staffUser
+      ),
       attendance: Array.isArray(attendanceResult) ? attendanceResult[0] : attendanceResult,
       date: attendanceDate,
     });

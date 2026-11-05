@@ -2,6 +2,13 @@ try {
   require('dotenv').config();
 } catch (e) {}
 
+const {
+  SUPABASE_SERVICE_ROLE_KEY,
+  requireStaff,
+  isConfigured,
+  filterStudentFieldsForUser,
+} = require('../lib/security');
+
 let rawUrl = (
   process.env.SUPABASE_URL ||
   process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -14,11 +21,7 @@ if (rawUrl && !/^https?:\/\//i.test(rawUrl) && !/^postgres/i.test(rawUrl)) {
 const SUPABASE_URL = rawUrl;
 
 const SUPABASE_KEY = (
-  process.env.SUPABASE_KEY ||
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SUPABASE_ANON_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  process.env.SUPABASE_API_KEY ||
+  SUPABASE_SERVICE_ROLE_KEY ||
   ''
 ).trim().replace(/^["']|["']$/g, '');
 
@@ -35,15 +38,29 @@ module.exports = async (req, res) => {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const staffUser = await requireStaff(req, res, 'students.read');
+  if (!staffUser) return;
+
+  if (!isConfigured()) {
+    return res.status(503).json({ error: 'Supabase Auth y la clave privada del servidor deben estar configurados.' });
+  }
+
   if (!SUPABASE_URL || !SUPABASE_KEY) {
     return res.status(500).json({
-      error: 'Falta configurar SUPABASE_URL o SUPABASE_KEY en las variables de entorno.',
+      error: 'Falta configurar SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en las variables de entorno.',
       hint: 'Agrégalas en Vercel (Project Settings -> Environment Variables) o en el archivo .env si ejecutas en local.'
     });
   }
 
   try {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/students?select=*&order=name.asc`, {
+    const yearFilter = staffUser.esAdmin
+      ? ''
+      : `&year=in.(${staffUser.allowedYears.map(Number).filter(Number.isInteger).join(',')})`;
+    if (!staffUser.esAdmin && !staffUser.allowedYears.length) {
+      return res.status(403).json({ error: 'Esta cuenta no tiene años académicos asignados.' });
+    }
+
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/students?select=*&order=name.asc${yearFilter}`, {
       headers: {
         apikey: SUPABASE_KEY,
         Authorization: `Bearer ${SUPABASE_KEY}`,
@@ -71,7 +88,7 @@ module.exports = async (req, res) => {
         }
         const year = Number(student.year || 1);
         if (!years[year]) years[year] = { students: [] };
-        years[year].students.push(student);
+        years[year].students.push(filterStudentFieldsForUser(student, staffUser));
       });
     }
 
@@ -81,4 +98,3 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: error.message || String(error) });
   }
 };
-

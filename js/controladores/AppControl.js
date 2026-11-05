@@ -2,21 +2,20 @@ const init = () => {
   loadData();
   
   const savedUser = sessionStorage.getItem('activeUser');
-  if (savedUser) {
+  const savedTokens = sessionStorage.getItem('authTokens');
+  if (savedUser && savedTokens) {
     try {
-      const parsedUser = JSON.parse(savedUser);
-      const currentTeacher = Object.values(TEACHERS).find(teacher => teacher.name === parsedUser.name);
-      if (currentTeacher) {
-        currentUser = currentTeacher;
-    sessionStorage.setItem('activeUser', JSON.stringify(currentTeacher));
-    const userNameSpan = document.getElementById('userName');
-    if (userNameSpan) userNameSpan.textContent = currentUser.name;
-      } else {
-        sessionStorage.removeItem('activeUser');
-      }
+      currentUser = JSON.parse(savedUser);
+      if (!currentUser?.name || !currentUser?.id) throw new Error('Sesión incompleta.');
+      const userNameSpan = document.getElementById('userName');
+      if (userNameSpan) userNameSpan.textContent = currentUser.name;
     } catch (error) {
       sessionStorage.removeItem('activeUser');
+      sessionStorage.removeItem('authTokens');
     }
+  } else {
+    sessionStorage.removeItem('activeUser');
+    sessionStorage.removeItem('authTokens');
   }
 
   if (currentUser?.soloReportes && !window.location.pathname.toLowerCase().endsWith('reportes.html')) {

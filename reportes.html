@@ -338,6 +338,7 @@
 
   </div>
 
+  <script src="js/config/api-auth-client.js"></script>
   <script>
     let chartGeneral = null;
     let chartTopFaltas = null;
@@ -822,7 +823,9 @@
 
     function salirDeReportes() {
       if (sessionUser.soloReportes) {
+        window.closeAppSession?.();
         sessionStorage.removeItem('activeUser');
+        sessionStorage.removeItem('authTokens');
         window.location.replace('index.html');
         return;
       }

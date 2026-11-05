@@ -2,6 +2,16 @@ try {
   require('dotenv').config();
 } catch (e) {}
 
+const {
+  SUPABASE_SERVICE_ROLE_KEY,
+  isConfigured,
+  requireStaff,
+  hasPermission,
+  getStudentPatchPermissions,
+  isYearAllowed,
+  filterStudentFieldsForUser,
+} = require('../lib/security');
+
 let rawUrl = (
   process.env.SUPABASE_URL ||
   process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -14,11 +24,7 @@ if (rawUrl && !/^https?:\/\//i.test(rawUrl) && !/^postgres/i.test(rawUrl)) {
 const SUPABASE_URL = rawUrl;
 
 const SUPABASE_KEY = (
-  process.env.SUPABASE_KEY ||
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SUPABASE_ANON_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  process.env.SUPABASE_API_KEY ||
+  SUPABASE_SERVICE_ROLE_KEY ||
   ''
 ).trim().replace(/^["']|["']$/g, '');
 
@@ -46,6 +52,25 @@ const safeNumber = (value, fallback = 0) => {
 };
 
 const hasGrades = (grades) => grades && typeof grades === 'object' && Object.keys(grades).length > 0;
+const publicPortalRecord = (student) => {
+  const isExempt = String(student.cedula || '').trim().replace(/\D/g, '') === '28000002';
+  const isAuthorized = String(student.BoletaVisible || '').trim().toUpperCase() === 'SI' || isExempt;
+  const publicFields = {
+    id: student.id,
+    name: student.name,
+    cedula: student.cedula,
+    year: student.year,
+    BoletaVisible: isAuthorized && isExempt ? 'SI' : student.BoletaVisible,
+  };
+  if (!isAuthorized) return publicFields;
+  return {
+    ...publicFields,
+    payment_status: isExempt ? 'pago' : (student.payment_status || 'no_pago'),
+    paid_amount: isExempt ? Math.max(30, safeNumber(student.paid_amount, 0)) : safeNumber(student.paid_amount, 0),
+    payments: student.payments || {},
+    grades: student.grades || {},
+  };
+};
 
 const getSupabaseError = (data, fallback) => {
   const message = data.message || data.error || fallback;
@@ -79,7 +104,7 @@ module.exports = async function handler(req, res) {
 
   if (!SUPABASE_URL || !SUPABASE_KEY) {
     return res.status(500).json({
-      error: 'Falta configurar SUPABASE_URL o SUPABASE_KEY en las variables de entorno.',
+      error: 'Falta configurar SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY en las variables de entorno.',
       hasUrl: Boolean(SUPABASE_URL),
       hasKey: Boolean(SUPABASE_KEY),
       hint: 'Agrégalas en Vercel (Project Settings -> Environment Variables) o en el archivo .env si ejecutas en local.'
@@ -88,22 +113,50 @@ module.exports = async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const year = req.query?.year;
-      const id = req.query?.id;
-      const cedula = req.query?.cedula;
-      const filters = [];
-      if (year) filters.push(`year=eq.${encodeURIComponent(String(year))}`);
-      if (id) filters.push(`id=eq.${encodeURIComponent(String(id))}`);
-      if (cedula) filters.push(`cedula=eq.${encodeURIComponent(String(cedula))}`);
-      const query = `?${['select=*', ...filters, 'order=name.asc'].join('&')}`;
-      const response = await supabaseFetch(`/students${query}`);
-      const data = await response.json().catch(() => []);
+        const { year, id, cedula, date } = req.query || {};
+        const publicLookup = !req.headers?.authorization && Boolean(id || cedula);
+        let staffUser = null;
+        if (!publicLookup) {
+          staffUser = await requireStaff(req, res, 'students.read');
+          if (!staffUser) return;
+          if (year && !isYearAllowed(staffUser, year)) {
+            return res.status(403).json({ error: 'No tienes acceso a este año académico.' });
+          }
+          if (date && !hasPermission(staffUser, 'attendance.read') && !hasPermission(staffUser, 'attendance.mark')) {
+            return res.status(403).json({ error: 'No tienes permiso para consultar registros de asistencia.' });
+          }
+        } else if (!isConfigured()) {
+          return res.status(503).json({ error: 'El servicio de consulta del portal no está configurado.' });
+        }
+
+        const filters = [];
+        if (year) filters.push(`year=eq.${encodeURIComponent(String(year))}`);
+        if (id) filters.push(`id=eq.${encodeURIComponent(String(id))}`);
+        if (cedula) filters.push(`cedula=eq.${encodeURIComponent(String(cedula))}`);
+        if (!publicLookup && !year && !staffUser.esAdmin) {
+          const allowedYears = staffUser.allowedYears.map(Number).filter(Number.isInteger);
+          if (!allowedYears.length) {
+            return res.status(403).json({ error: 'Esta cuenta no tiene años académicos asignados.' });
+          }
+          filters.push(`year=in.(${allowedYears.join(',')})`);
+        }
+        const columns = publicLookup
+          ? 'id,name,cedula,year,"BoletaVisible",payment_status,paid_amount,payments,grades'
+          : '*';
+        const queryOptions = [`select=${encodeURIComponent(columns)}`, ...filters, 'order=name.asc'];
+        if (publicLookup) queryOptions.push('limit=1');
+        const query = `?${queryOptions.join('&')}`;
+        const response = await supabaseFetch(`/students${query}`);
+        const data = await response.json().catch(() => []);
       if (!response.ok) {
         return res.status(response.status).json({ error: data.message || data.error || 'No se pudo consultar estudiantes.' });
       }
 
       const students = Array.isArray(data) ? data : [];
-      const attendanceDate = req.query?.date;
+      if (publicLookup) {
+        return res.status(200).json(students.map(publicPortalRecord));
+      }
+      const attendanceDate = date;
       if (attendanceDate && students.length) {
         const attendanceResponse = await supabaseFetch(
           `/attendances?date=eq.${encodeURIComponent(String(attendanceDate))}&select=*`
@@ -139,7 +192,7 @@ module.exports = async function handler(req, res) {
         });
       }
 
-      return res.status(200).json(students);
+      return res.status(200).json(students.map((student) => filterStudentFieldsForUser(student, staffUser)));
     }
 
     if (req.method === 'POST') {
@@ -147,9 +200,27 @@ module.exports = async function handler(req, res) {
       const rawYear = body?.year ?? body?.selectedYear ?? body?.anio ?? body?.anio ?? 1;
       const { id, name, cedula, email, phone, BoletaVisible, paymentStatus, paidAmount, payments, grades, attendance, attendanceByDate } = body || {};
       const year = Number(rawYear);
+      const staffUser = await requireStaff(req, res, 'students.write');
+      if (!staffUser) return;
+      if (!isYearAllowed(staffUser, year)) {
+        return res.status(403).json({ error: 'No tienes acceso a este año académico.' });
+      }
 
       if (!name || Number.isNaN(year)) {
         return res.status(400).json({ error: 'Falta nombre o el año es inválido.' });
+      }
+      if (hasGrades(grades) && !hasPermission(staffUser, 'students.grades')) {
+        return res.status(403).json({ error: 'No tienes permiso para registrar calificaciones.' });
+      }
+      const hasSensitivePayments = (payments && Object.keys(payments).length > 0)
+        || Number(paidAmount) > 0
+        || (paymentStatus && paymentStatus !== 'no_pago')
+        || BoletaVisible === 'SI';
+      if (hasSensitivePayments && !hasPermission(staffUser, 'payments.write')) {
+        return res.status(403).json({ error: 'No tienes permiso para modificar pagos o autorizar boletas.' });
+      }
+      if (Object.keys(attendance || {}).length || Object.keys(attendanceByDate || {}).length) {
+        return res.status(400).json({ error: 'Las asistencias deben registrarse desde el endpoint de asistencia.' });
       }
 
       const payload = {
@@ -165,13 +236,13 @@ module.exports = async function handler(req, res) {
         paid_amount: safeNumber(paidAmount, 0),
         payments: payments || {},
         ...(hasGrades(grades) ? { grades } : {}),
-        attendance: attendance || {},
-        attendance_by_date: attendanceByDate || {},
+        attendance: {},
+        attendance_by_date: {},
       };
 
-      const response = await supabaseFetch('/students?on_conflict=id', {
+      const response = await supabaseFetch('/students', {
         method: 'POST',
-        headers: { Prefer: 'return=representation,resolution=merge-duplicates' },
+        headers: { Prefer: 'return=representation' },
         body: JSON.stringify([payload]),
       });
       const data = await response.json().catch(() => []);
@@ -183,15 +254,37 @@ module.exports = async function handler(req, res) {
       }
 
       const saved = Array.isArray(data) ? data[0] : data;
-      return res.status(201).json(saved || payload);
+      return res.status(201).json(filterStudentFieldsForUser(saved || payload, staffUser));
     }
 
     if (req.method === 'PATCH') {
       const body = await parseBody(req);
       const { id, name, cedula, email, phone, year, BoletaVisible, paymentStatus, paidAmount, payments, grades, attendance, attendanceByDate } = body || {};
+      const patchPermissions = getStudentPatchPermissions(body);
+      const staffUser = await requireStaff(req, res, patchPermissions);
+      if (!staffUser) return;
 
       if (!id) {
         return res.status(400).json({ error: 'Falta id del estudiante.' });
+      }
+      if (year !== undefined && !isYearAllowed(staffUser, year)) {
+        return res.status(403).json({ error: 'No tienes acceso a este año académico.' });
+      }
+      const hasPaymentChange = BoletaVisible !== undefined
+        || paymentStatus !== undefined
+        || paidAmount !== undefined
+        || payments !== undefined;
+      if (hasPaymentChange && !hasPermission(staffUser, 'payments.write')) {
+        return res.status(403).json({ error: 'No tienes permiso para modificar pagos o autorizar boletas.' });
+      }
+      if (attendance !== undefined || attendanceByDate !== undefined) {
+        return res.status(403).json({ error: 'Las asistencias deben modificarse desde el registro de asistencia.' });
+      }
+      const allowedYears = staffUser.esAdmin
+        ? []
+        : staffUser.allowedYears.map(Number).filter(Number.isInteger);
+      if (!staffUser.esAdmin && !allowedYears.length) {
+        return res.status(403).json({ error: 'Esta cuenta no tiene años académicos asignados.' });
       }
 
       const changes = {};
@@ -209,7 +302,8 @@ module.exports = async function handler(req, res) {
       if (attendanceByDate !== undefined) changes.attendance_by_date = attendanceByDate;
       if (body?.status !== undefined) changes.status = body.status;
 
-      const response = await supabaseFetch(`/students?id=eq.${encodeURIComponent(String(id))}`, {
+      const yearFilter = staffUser.esAdmin ? '' : `&year=in.(${allowedYears.join(',')})`;
+      const response = await supabaseFetch(`/students?id=eq.${encodeURIComponent(String(id))}${yearFilter}`, {
         method: 'PATCH',
         headers: { Prefer: 'return=representation' },
         body: JSON.stringify(changes),
@@ -221,16 +315,24 @@ module.exports = async function handler(req, res) {
       }
 
       const updated = Array.isArray(data) ? data[0] : data;
-      return res.status(200).json(updated || { id });
+      return res.status(200).json(updated ? filterStudentFieldsForUser(updated, staffUser) : { id });
     }
 
     if (req.method === 'DELETE') {
       const id = req.query?.id || (await parseBody(req)).id;
+      const staffUser = await requireStaff(req, res, 'students.write');
+      if (!staffUser) return;
       if (!id) {
         return res.status(400).json({ error: 'Falta id para eliminar.' });
       }
 
-      const response = await supabaseFetch(`/students?id=eq.${encodeURIComponent(String(id))}`, {
+      const yearFilter = staffUser.esAdmin
+        ? ''
+        : `&year=in.(${staffUser.allowedYears.map(Number).filter(Number.isInteger).join(',')})`;
+      if (!staffUser.esAdmin && !staffUser.allowedYears.length) {
+        return res.status(403).json({ error: 'Esta cuenta no tiene años académicos asignados.' });
+      }
+      const response = await supabaseFetch(`/students?id=eq.${encodeURIComponent(String(id))}${yearFilter}`, {
         method: 'DELETE',
       });
 

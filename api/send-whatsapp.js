@@ -1,3 +1,5 @@
+const { requireStaff } = require('../lib/security');
+
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
@@ -10,6 +12,9 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed', allowed: ['POST'] });
   }
+
+  const staffUser = await requireStaff(req, res, 'students.write');
+  if (!staffUser) return;
 
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
   const phone = body.phone;
