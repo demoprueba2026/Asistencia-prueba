@@ -212,6 +212,52 @@ body[data-theme="dark"] #btnCerrarSesion {
   border-radius: 999px;
 }
 
+body[data-theme="light"] #attendanceModal .modal-content {
+  color: #172033 !important;
+  background: #fff !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+body[data-theme="light"] #attendanceModal #attendanceModalMessage {
+  color: #1d4ed8 !important;
+}
+
+body[data-theme="light"] #attendanceModal #attendanceModalClose {
+  color: #fff !important;
+  background: #2563eb !important;
+  border: 1px solid #1d4ed8 !important;
+}
+
+body[data-theme="dark"] #attendanceModal .modal-content {
+  color: #e8eef8 !important;
+  background: #111e30 !important;
+  border: 1px solid #52657e !important;
+}
+
+body[data-theme="dark"] #attendanceModal #attendanceModalMessage {
+  color: #bfdbfe !important;
+}
+
+body[data-theme="dark"] #attendanceModal #attendanceModalClose {
+  color: #fff !important;
+  background: #2563eb !important;
+  border: 1px solid #60a5fa !important;
+}
+
+body[data-theme="light"] .toast {
+  color: #172033 !important;
+  background: #fff !important;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.2);
+}
+
+body[data-theme="dark"] .toast {
+  color: #e8eef8 !important;
+  background: #111e30 !important;
+  border: 1px solid #394b63;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
 .theme-toolbar #themeToggle,
 #btnCerrarSesion {
   width: auto !important;
