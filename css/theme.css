@@ -1,0 +1,173 @@
+body[data-theme="light"] {
+  --bg: #f3f6fa;
+  --surface: #fff;
+  --surface-soft: rgba(15, 23, 42, 0.04);
+  --primary: #2563eb;
+  --accent: #1d4ed8;
+  --button: #2563eb;
+  --text: #172033;
+  --muted: #526174;
+  --border: #d7e0eb;
+  color-scheme: light;
+  color: #172033 !important;
+  background: #f3f6fa !important;
+  background-image: none !important;
+}
+
+body[data-theme="dark"] {
+  --bg: #07111f;
+  --surface: #111e30;
+  --surface-soft: rgba(255, 255, 255, 0.04);
+  --primary: #4da8ff;
+  --accent: #3d7bff;
+  --button: #0ea5ff;
+  --text: #e8eef8;
+  --muted: #a9bad0;
+  --border: #29384d;
+  color-scheme: dark;
+  color: #e8eef8 !important;
+  background: #07111f !important;
+  background-image: none !important;
+}
+
+body[data-theme="light"] :is(h1, h2, h3, h4, p, label, th, td, .intro, .list-heading, .assessment-editor-heading, .status, .empty, .toolbar strong) {
+  color: #172033;
+}
+
+body[data-theme="dark"] :is(h1, h2, h3, h4, p, label, th, td, .intro, .list-heading, .assessment-editor-heading, .status, .empty, .toolbar strong) {
+  color: #e8eef8;
+}
+
+body[data-theme="light"] :is(.landing-copy, .email-status, .selector-note, .student-summary, .landing-intro p) {
+  color: #526174 !important;
+}
+
+body[data-theme="dark"] :is(.landing-copy, .email-status, .selector-note, .student-summary, .landing-intro p) {
+  color: #a9bad0 !important;
+}
+
+body[data-theme="light"] :is(.landing-card, .landing-section, .app-shell, .boletin, .boletin-paper, .document-panel, .top-bar, .recibo-paper, .student-list-section, .card, .kpi-card, .filters, .assessment-editor, .assessment-item, .assessment-field, .grade-summary-item, .modal-content, #adminNestorView, .admin-card, .admin-section) {
+  color: #172033 !important;
+  background-color: #fff !important;
+  border-color: #d7e0eb !important;
+}
+
+body[data-theme="dark"] :is(.landing-card, .landing-section, .app-shell, .boletin, .boletin-paper, .document-panel, .top-bar, .recibo-paper, .student-list-section, .card, .kpi-card, .filters, .assessment-editor, .assessment-item, .assessment-field, .grade-summary-item, .modal-content, #adminNestorView, .admin-card, .admin-section) {
+  color: #e8eef8 !important;
+  background-color: #111e30 !important;
+  border-color: #29384d !important;
+}
+
+body[data-theme="light"] :is(input, select, textarea, .search-input, .grade-input, .earned-points-input, .activity-name-input, .activity-weight-input) {
+  color: #172033 !important;
+  background-color: #fff !important;
+  border-color: #cbd5e1 !important;
+}
+
+body[data-theme="dark"] :is(input, select, textarea, .search-input, .grade-input, .earned-points-input, .activity-name-input, .activity-weight-input) {
+  color: #e8eef8 !important;
+  background-color: #0b1626 !important;
+  border-color: #394b63 !important;
+}
+
+body[data-theme="light"] :is(.assessment-item, .assessment-field, .grade-summary-item, .filters, .assessment-editor, .modal-content, .student-list-section) :is(span, strong, small, p, label, h2, h3, h4) {
+  color: #172033 !important;
+}
+
+body[data-theme="dark"] :is(.assessment-item, .assessment-field, .grade-summary-item, .filters, .assessment-editor, .modal-content, .student-list-section) :is(span, strong, small, p, label, h2, h3, h4) {
+  color: #e8eef8 !important;
+}
+
+body[data-theme="light"] #studentListContainer,
+body[data-theme="light"] #studentListContainer :is(td, th, .student-name, .student-card, .student-info, .student-row, p, label),
+body[data-theme="light"] :is(#backToLanding, #currentSelection, #subjectInfo, #addStudentSubjectInfo, .selector-note, .student-summary, #studentSummary, #userInfo) {
+  color: #172033 !important;
+}
+
+body[data-theme="dark"] #studentListContainer,
+body[data-theme="dark"] #studentListContainer :is(td, th, .student-name, .student-card, .student-info, .student-row, p, label),
+body[data-theme="dark"] :is(#backToLanding, #currentSelection, #subjectInfo, #addStudentSubjectInfo, .selector-note, .student-summary, #studentSummary, #userInfo) {
+  color: #e8eef8 !important;
+}
+
+body[data-theme="light"] .app-shell,
+body[data-theme="light"] .app-shell * {
+  color: #172033 !important;
+}
+
+body[data-theme="dark"] .app-shell,
+body[data-theme="dark"] .app-shell * {
+  color: #e8eef8 !important;
+}
+
+body[data-theme="light"] :is(.intro p, .list-heading p, .assessment-total, .assessment-points, .assessment-field-label, .grade-summary-item span, .empty, .student-summary) {
+  color: #526174 !important;
+}
+
+body[data-theme="dark"] :is(.intro p, .list-heading p, .assessment-total, .assessment-points, .assessment-field-label, .grade-summary-item span, .empty, .student-summary) {
+  color: #a9bad0 !important;
+}
+
+body[data-theme="light"] :is(th, .table-header th) {
+  color: #172033 !important;
+  background-color: #e8edf4 !important;
+}
+
+body[data-theme="dark"] :is(th, .table-header th) {
+  color: #e8eef8 !important;
+  background-color: #1b2a3e !important;
+}
+
+body[data-theme="dark"] .header-panel p {
+  color: #a9bad0 !important;
+}
+
+body[data-theme="light"] :is(td, .final-grade-value) {
+  border-color: #d7e0eb !important;
+}
+
+body[data-theme="dark"] :is(td, .final-grade-value) {
+  border-color: #29384d !important;
+  background-color: #142237 !important;
+}
+
+body[data-theme="light"] #themeToggle {
+  color: #172033;
+  background: #fff;
+  border-color: #cbd5e1;
+}
+
+body[data-theme="dark"] #themeToggle {
+  color: #e8eef8;
+  background: #111e30;
+  border-color: #394b63;
+}
+
+#themeToggle {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 9999;
+  width: auto;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid;
+  border-radius: 999px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.2);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#themeToggle:focus-visible {
+  outline: 3px solid #3b82f6;
+  outline-offset: 3px;
+}
+
+@media (max-width: 520px) {
+  #themeToggle {
+    right: 12px;
+    bottom: 12px;
+  }
+}

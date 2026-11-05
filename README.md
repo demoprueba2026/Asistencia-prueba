@@ -9,6 +9,7 @@ Asistencias de estudiantes
 - `js/controladores/`: `AuthControl.js`, `AsistenciaControl.js`, `AdminControl.js`, `AdminPagosControl.js` y `AppControl.js`.
 - `app.js`: punto de entrada. Las páginas `index.html` y `registro.html` cargan los módulos clásicos en orden antes de inicializar la aplicación.
 - `api/` y los scripts de servidor en la raíz: endpoints y tareas del backend; permanecen separados del código del navegador.
+- Las páginas principales incluyen un interruptor de tema claro/oscuro compartido; la preferencia se conserva al navegar entre módulos.
 
 ## Autenticación y acceso a Supabase
 
