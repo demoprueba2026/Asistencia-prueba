@@ -301,6 +301,11 @@
             <option value="todas">Todas las materias</option>
           </select>
         </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <label for="regBuscarEstudiante" style="font-size: 0.85rem; font-weight: 700; color: #1e293b;">Buscar estudiante</label>
+          <input type="search" id="regBuscarEstudiante" oninput="buscarRegistroPorEstudiante()" placeholder="Nombre o cédula..." autocomplete="off" style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 7px 12px; font-size: 0.95rem; background: #ffffff; color: #1e293b; min-width: 220px; outline: none; font-family: inherit;">
+        </div>
       </div>
 
       <!-- Tabla del Registro -->
@@ -353,6 +358,26 @@
     let registroPaginaActual = 1;
     const REGISTRO_POR_PAGINA = 6;
     let registrosFiltradosActuales = [];
+    const normalizarBusquedaRegistro = (texto) => String(texto || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+
+    function obtenerRegistrosDeBusqueda() {
+      const consulta = normalizarBusquedaRegistro(document.getElementById('regBuscarEstudiante')?.value);
+      const consultaCedula = consulta.replace(/[^a-z0-9]/g, '');
+      return registrosFiltradosActuales.filter(registro => {
+        const nombre = normalizarBusquedaRegistro(registro.name);
+        const cedula = normalizarBusquedaRegistro(registro.cedula).replace(/[^a-z0-9]/g, '');
+        return nombre.includes(consulta) || Boolean(consultaCedula && cedula.includes(consultaCedula));
+      });
+    }
+
+    function buscarRegistroPorEstudiante() {
+      registroPaginaActual = 1;
+      renderizarTablaRegistro();
+    }
 
     const SUBJECTS_MAP = {
       'matematicas': 'Matemáticas',
@@ -654,6 +679,7 @@
             registros.push({
               year: `${y}° Año`,
               name: est.name || 'Estudiante sin nombre',
+              cedula: est.cedula || '',
               subject: materiaLabel,
               status: String(status).toLowerCase() === 'inasistente' ? 'Inasistente' : 'Asistente',
               time: hora,
@@ -672,6 +698,7 @@
             registros.push({
               year: `${y}° Año`,
               name: est.name || 'Estudiante sin nombre',
+              cedula: est.cedula || '',
               subject: materiaLabel,
               status: estadoGen,
               time: hora,
@@ -693,9 +720,10 @@
 
       if (!tbody || !pagInfo || !btnAnt || !btnSig) return;
 
-      const total = registrosFiltradosActuales.length;
+      const registrosVisibles = obtenerRegistrosDeBusqueda();
+      const total = registrosVisibles.length;
       if (total === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #64748b; padding: 28px 14px; font-size: 0.92rem;">No se encontraron registros de asistencia para los filtros seleccionados.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #64748b; padding: 28px 14px; font-size: 0.92rem;">No se encontraron registros para la fecha, nombre o cédula y filtros seleccionados.</td></tr>';
         pagInfo.textContent = 'Mostrando 0 registros';
         btnAnt.disabled = true;
         btnAnt.style.background = '#cbd5e1';
@@ -712,7 +740,7 @@
 
       const inicio = (registroPaginaActual - 1) * REGISTRO_POR_PAGINA;
       const fin = Math.min(inicio + REGISTRO_POR_PAGINA, total);
-      const paginaItems = registrosFiltradosActuales.slice(inicio, fin);
+      const paginaItems = registrosVisibles.slice(inicio, fin);
 
       tbody.innerHTML = paginaItems.map(item => {
         const badgeStyle = item.status === 'Asistente'
@@ -766,7 +794,7 @@
     }
 
     function paginaRegistroSiguiente() {
-      const totalPaginas = Math.ceil(registrosFiltradosActuales.length / REGISTRO_POR_PAGINA);
+      const totalPaginas = Math.ceil(obtenerRegistrosDeBusqueda().length / REGISTRO_POR_PAGINA);
       if (registroPaginaActual < totalPaginas) {
         registroPaginaActual++;
         renderizarTablaRegistro();
