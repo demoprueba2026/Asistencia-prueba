@@ -21,6 +21,9 @@
     applyTheme();
   });
 
-  document.body.appendChild(button);
+  const toolbar = document.createElement('div');
+  toolbar.className = 'theme-toolbar';
+  toolbar.appendChild(button);
+  document.body.insertBefore(toolbar, document.body.firstChild);
   applyTheme();
 })();

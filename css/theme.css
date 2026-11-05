@@ -197,11 +197,14 @@ body[data-theme="dark"] #themeToggle {
   border-color: #394b63;
 }
 
+.theme-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 18px 0;
+}
+
 #themeToggle {
-  position: fixed;
-  right: 18px;
-  bottom: 18px;
-  z-index: 9999;
+  position: static;
   width: auto;
   min-height: 44px;
   padding: 10px 14px;
@@ -220,8 +223,7 @@ body[data-theme="dark"] #themeToggle {
 }
 
 @media (max-width: 520px) {
-  #themeToggle {
-    right: 12px;
-    bottom: 12px;
+  .theme-toolbar {
+    padding: 10px 12px 0;
   }
 }
