@@ -14,9 +14,9 @@ const syncStudentManagementControls = () => {
   
   if (btnAdminNestor) {
     const esProfNestor = currentUser && (currentUser.name.includes("Néstor") || currentUser.name.includes("Nestor"));
-    const esAdminExclusivo = currentUser && currentUser.soloAdmin;
+    const esAdmin = currentUser && (currentUser.esAdmin || currentUser.soloAdmin);
 
-    if (esProfNestor || esAdminExclusivo) {
+    if (esProfNestor || esAdmin) {
       btnAdminNestor.classList.remove('hidden');
       btnAdminNestor.style.display = 'inline-block';
     } else {

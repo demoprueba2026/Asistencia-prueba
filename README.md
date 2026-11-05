@@ -18,6 +18,8 @@ Para pruebas sin crear usuarios en Supabase Auth se puede habilitar el acceso lo
 
 En un proyecto Supabase existente, ejecuta `supabase-security-migration.sql` una sola vez en **SQL Editor**. La migración elimina las políticas de acceso abierto y quita el acceso directo a `students` y `attendances` para `anon` y `authenticated`. Los usuarios y contraseñas que antes estaban en el JavaScript se retiraron deliberadamente; no vuelvas a poner contraseñas en el código. Para conservar los nombres de usuario, crea primero una cuenta individual en **Authentication → Users** por cada persona y asigna una contraseña nueva. Después reemplaza los emails de `supabase-staff-users.sql` por los emails asociados a esas cuentas y ejecuta el script en **SQL Editor**. Ese email solo sirve de vínculo interno: el profesor seguirá entrando con su nombre de usuario original y su contraseña nueva. El script valida que las cuentas Auth existan antes de guardar sus perfiles. Sin un perfil activo en `public.staff_access`, el inicio de sesión se rechazará.
 
+Para habilitar el administrador `admin1`, crea su cuenta en **Supabase → Authentication → Users** con la contraseña `admin123` y un email que controles. Reemplaza `REEMPLAZAR-admin1@dominio.com` en `supabase-admin1.sql` por ese mismo email y ejecuta el script en **SQL Editor**. Luego podrá iniciar sesión con `admin1` y esa contraseña; tendrá permisos administrativos completos en todos los años y materias, incluido el módulo administrativo. La contraseña no se guarda en el repositorio. `admin123` es débil: cámbiala por una contraseña robusta después de la configuración.
+
 Ejemplo de asignación (reemplaza el correo, usuario, nombre, ID de Auth, permisos y materias por los de cada persona):
 
 ```sql
