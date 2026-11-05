@@ -191,10 +191,34 @@ body[data-theme="light"] #themeToggle {
   border-color: #cbd5e1;
 }
 
+body[data-theme="light"] #btnCerrarSesion {
+  color: #172033 !important;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
+}
+
 body[data-theme="dark"] #themeToggle {
   color: #e8eef8;
   background: #111e30;
   border-color: #394b63;
+}
+
+body[data-theme="dark"] #btnCerrarSesion {
+  color: #e8eef8 !important;
+  background: #111e30;
+  border: 1px solid #394b63;
+  border-radius: 999px;
+}
+
+.theme-toolbar #themeToggle,
+#btnCerrarSesion {
+  width: auto !important;
+  min-height: 44px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  font-weight: 700;
 }
 
 .theme-toolbar {
