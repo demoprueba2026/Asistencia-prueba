@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Cargar notas - U.E.P Pensando en Redes</title>
+  <title>Cargar notas - U.E.P Instituto Libertad</title>
   <link rel="icon" type="image/png" href="sello.png">
   <style>
     :root {
@@ -93,19 +93,54 @@
     .activity-name-input, .activity-weight-input { min-width: 0; }
     .assessment-total { margin: 12px 0 0; color: #4c5b70; font-weight: 700; }
     .assessment-total.error { color: #b42318; }
-    .add-activity-button, .remove-activity-button { min-height: 40px; padding: 8px 12px; border: 1px solid #c8d2e0; border-radius: 7px; background: #fff; color: #1f3554; font-weight: 700; cursor: pointer; }
+    .add-activity-button, .remove-activity-button, .activity-lock-button { min-height: 40px; padding: 8px 12px; border: 1px solid #c8d2e0; border-radius: 7px; background: #fff; color: #1f3554; font-weight: 700; cursor: pointer; }
     .remove-activity-button { color: #b42318; }
+    .assessment-controls { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+    .activity-lock-button { color: #1668b2; }
+    .activity-lock-button:disabled { opacity: .6; cursor: wait; }
     .table-scroll { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; }
     th, td { padding: 12px 14px; border-bottom: 1px solid #dce3ec; text-align: left; }
     th { background: #e8edf4; color: #26364c; }
+    .grades-table { table-layout: fixed; }
+    .grades-table th, .grades-table td { padding: 9px 5px; }
+    .grades-table th:nth-child(1), .grades-table td:nth-child(1) { width: 48px; }
+    .grades-table th:nth-child(2), .grades-table td:nth-child(2) { width: 128px; }
+    .grades-table th:last-child, .grades-table td:last-child { width: 160px; }
     td:nth-child(1), th:nth-child(1) { width: 90px; text-align: center; }
     td:last-child, th:last-child { width: 190px; text-align: center; }
     .student-name { font-weight: 700; }
     .grade-input, .earned-points-input { max-width: 110px; text-align: center; font-weight: 700; }
+    .grades-table .grade-input, .grades-table .earned-points-input {
+      width: 100%;
+      max-width: none;
+      min-width: 0;
+      padding: 6px 3px;
+    }
+    .grade-input:disabled, .earned-points-input:disabled { background: #eef2f7; color: #64748b; cursor: not-allowed; }
     .grade-input:focus, .earned-points-input:focus, .activity-name-input:focus, .activity-weight-input:focus, .filters select:focus, .search input:focus { outline: 2px solid #93c5fd; border-color: #2563eb; }
     .assessment-column { min-width: 150px; text-align: center; }
     .assessment-weight-column, .assessment-weight-value { min-width: 135px; text-align: center; }
+    .activity-header, .activity-weight-header {
+      width: 68px;
+      min-width: 68px;
+      height: 180px;
+      padding: 10px 6px;
+      text-align: center;
+      vertical-align: bottom;
+    }
+    .grades-table th.activity-header { width: 68px; min-width: 68px; }
+    .grades-table th.activity-weight-header,
+    .grades-table td.assessment-weight-value {
+      width: 78px;
+      min-width: 78px;
+    }
+    .activity-header > span, .activity-weight-header > span {
+      display: inline-block;
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      white-space: normal;
+    }
     .calculated-grade { font-weight: 700; }
     .final-grade-values { display: flex; justify-content: center; gap: 6px; }
     .final-grade-value { display: grid; gap: 2px; min-width: 68px; padding: 5px 7px; border: 1px solid #d2dbe7; border-radius: 6px; background: #f8fafc; }
@@ -116,6 +151,24 @@
     .grade-summary-item { display: grid; gap: 4px; padding: 12px 14px; border: 1px solid #dce3ec; border-radius: 8px; background: #f8fafc; }
     .grade-summary-item span { color: #4c5b70; font-size: .9rem; }
     .grade-summary-item strong { font-size: 1.25rem; }
+    .pending-subjects-editor { margin-top: 28px; padding: 18px; background: #f3f6fa; border: 1px solid #dce4ef; border-radius: 10px; }
+    .pending-subjects-editor h2 { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 0 0 12px; font-size: 1.2rem; }
+    .pending-subjects-title { display: flex; align-items: center; gap: 12px; }
+    .recovery-count { color: #1668b2; font-size: .9rem; font-weight: 700; white-space: nowrap; }
+    .pending-subjects-editor > p { margin: 0 0 16px; color: #4c5b70; }
+    .pending-subjects-controls { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr) auto; align-items: end; gap: 12px; margin-bottom: 16px; }
+    .pending-subjects-controls label { display: grid; gap: 7px; font-weight: 700; }
+    .pending-subjects-controls select, .pending-review-input { width: 100%; min-height: 42px; padding: 8px 10px; border: 1px solid #c8d2e0; border-radius: 7px; background: #fff; color: #172033; }
+    .pending-review-input { max-width: 90px; text-align: center; font-weight: 700; }
+    .pending-review-input:focus, .pending-subjects-controls select:focus { outline: 2px solid #93c5fd; border-color: #2563eb; }
+    .pending-subjects-table th:first-child, .pending-subjects-table td:first-child { width: 280px; text-align: left; }
+    .pending-subject-cell { display: flex; align-items: center; gap: 8px; }
+    .pending-subject-label { min-width: 0; flex: 1; }
+    .pending-subject-remove { min-height: 38px; padding: 7px 11px; border: 1px solid #e7b9b5; border-radius: 7px; background: #fff; color: #b42318; font-weight: 700; cursor: pointer; }
+    .pending-subject-actions { display: flex; justify-content: flex-end; margin-top: 14px; }
+    .pending-status { min-height: 24px; margin: 12px 0 0; font-weight: 700; }
+    .pending-status.error { color: #b42318; }
+    .pending-status.success { color: #177245; }
     .actions { display: flex; justify-content: flex-end; align-items: center; gap: 14px; margin-top: 18px; }
     .save-button:disabled { opacity: .6; cursor: wait; }
     .status { min-height: 24px; margin-top: 14px; font-weight: 700; }
@@ -134,9 +187,12 @@
       .filters { grid-template-columns: 1fr; }
       .assessment-editor-heading { align-items: stretch; flex-direction: column; }
       .assessment-item { grid-template-columns: 1fr; }
+      .assessment-controls { justify-content: stretch; }
+      .assessment-controls button { flex: 1; }
       .list-heading { align-items: stretch; flex-direction: column; }
       .search { width: 100%; }
       .grade-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .pending-subjects-controls { grid-template-columns: 1fr; }
       th, td { padding: 10px 8px; }
       .table-scroll { overflow: visible; }
       table { display: block; }
@@ -146,17 +202,24 @@
       tbody td { display: grid; grid-template-columns: minmax(120px, 38%) minmax(0, 1fr); align-items: center; gap: 8px; padding: 10px 12px; }
       tbody td::before { content: attr(data-label); color: #26364c; font-weight: 700; text-align: left; }
       tbody td:nth-child(1), tbody td:last-child { width: auto; text-align: left; }
+      .grades-table tbody td:nth-child(1), .grades-table tbody td:nth-child(2),
+      .grades-table tbody td:last-child, .grades-table tbody td.assessment-weight-value {
+        width: auto;
+        min-width: 0;
+      }
+      .pending-subjects-table td:first-child { width: auto; }
       .final-grade-values { justify-content: flex-start; }
       tbody td.empty { display: block; text-align: center; }
       tbody td.empty::before { content: none; }
       .grade-input, .earned-points-input { width: 100%; }
+      .pending-review-input { max-width: 100%; }
       .actions { align-items: stretch; flex-direction: column; }
       .save-button { width: 100%; }
     }
   </style>
   <script src="js/config/api-auth-client.js" defer></script>
-  <script src="js/vistas/NotasVista.js" defer></script>
-  <link rel="stylesheet" href="css/theme.css" />
+  <script src="js/config/grade-subjects.js" defer></script>
+  <script src="js/controladores/NotasControl.js" defer></script>
 </head>
 <body>
   <main class="page">
@@ -222,7 +285,7 @@
       </div>
 
       <div class="table-scroll">
-        <table>
+        <table class="grades-table">
           <thead id="studentsHead">
             <tr>
               <th scope="col">N.º de lista</th>
@@ -249,8 +312,73 @@
         <button id="saveGrades" class="save-button" type="button">Guardar notas</button>
       </div>
       <p id="statusMessage" class="status" role="status" aria-live="polite"></p>
+
+      <section id="pendingSubjectsPanel" class="pending-subjects-editor" aria-labelledby="pendingSubjectsTitle" hidden>
+        <h2 id="pendingSubjectsTitle"><span class="pending-subjects-title">Recuperación <span id="recoveryStudentCount" class="recovery-count" role="status" aria-live="polite"></span></span></h2>
+        <div class="pending-subjects-controls">
+          <label for="pendingStudentSelect">Estudiante
+            <select id="pendingStudentSelect"></select>
+          </label>
+          <label for="pendingSubjectSelect">Materia a recuperar
+            <select id="pendingSubjectSelect"></select>
+          </label>
+          <button id="addPendingSubject" class="add-activity-button" type="button">Agregar materia</button>
+        </div>
+        <div class="table-scroll">
+          <table class="pending-subjects-table">
+            <thead>
+              <tr>
+                <th scope="col">Recuperación</th>
+                <th scope="col">Revisión 1</th>
+                <th scope="col">Revisión 2</th>
+                <th scope="col">Revisión 3</th>
+              </tr>
+            </thead>
+            <tbody id="pendingSubjectsBody">
+              <tr><td class="empty" colspan="4">Selecciona un estudiante.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pending-subject-actions">
+          <button id="savePendingSubjects" class="save-button" type="button">Guardar recuperaciones</button>
+        </div>
+        <p id="pendingSubjectsStatus" class="pending-status" role="status" aria-live="polite"></p>
+      </section>
+    </section>
+
+    <section id="pendingMatterPanel" class="pending-subjects-editor" aria-labelledby="pendingMatterTitle" hidden>
+      <h2 id="pendingMatterTitle">Materia Pendiente <span id="matterPendingStudentCount" class="recovery-count" role="status" aria-live="polite"></span></h2>
+      <p>Registra las notas M1, M2, M3 y M4. La materia pasa aquí automáticamente solo si las tres notas de revisión son menores a 10.</p>
+      <div class="pending-subjects-controls">
+        <label for="pendingMatterStudentSelect">Estudiante
+          <select id="pendingMatterStudentSelect"></select>
+        </label>
+        <label for="pendingMatterSubjectSelect">Materia pendiente
+          <select id="pendingMatterSubjectSelect"></select>
+        </label>
+        <button id="addPendingMatterSubject" class="add-activity-button" type="button">Agregar materia</button>
+      </div>
+      <div class="table-scroll">
+        <table class="pending-subjects-table">
+          <thead>
+            <tr>
+              <th scope="col">Materia Pendiente</th>
+              <th scope="col">M1</th>
+              <th scope="col">M2</th>
+              <th scope="col">M3</th>
+              <th scope="col">M4</th>
+            </tr>
+          </thead>
+          <tbody id="pendingMatterSubjectsBody">
+            <tr><td class="empty" colspan="5">Selecciona un estudiante.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pending-subject-actions">
+        <button id="savePendingMatterSubjects" class="save-button" type="button">Guardar materias pendientes</button>
+      </div>
+      <p id="pendingMatterStatus" class="pending-status" role="status" aria-live="polite"></p>
     </section>
   </main>
-  <script src="js/theme-toggle.js"></script>
 </body>
 </html>

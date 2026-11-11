@@ -42,6 +42,53 @@ const normalizarMontoPago = (valor) => {
   return Number.isFinite(numero) ? numero : 0;
 };
 
+const IDS_MATERIA_POR_NOMBRE = {
+  castellano: ['castellano'],
+  ingles: ['ingles'],
+  matematica: ['matematicas', 'matematica'],
+  matematicas: ['matematicas', 'matematica'],
+  crp: ['frances', 'crp'],
+  'educacion fisica': ['educacion-fisica'],
+  'arte y patrimonio': ['arte-patrimonio'],
+  'ciencias naturales': ['ciencias-naturales'],
+  fisica: ['fisica'],
+  quimica: ['quimica'],
+  biologia: ['biologia'],
+  'ciencias de la tierra': ['ciencias-tierra'],
+  'formacion para la soberania': ['formacion-soberania'],
+  ghc: ['ghc'],
+  'geografia historia y ciudadania': ['ghc'],
+  'orientacion y convivencia': ['orientacion-convivencia'],
+  frances: ['frances', 'crp'],
+};
+
+const calcularNotaFinalDesdeLapsos = (datos, idsMateria, materiaNormalizada) => {
+  for (const subjectId of idsMateria) {
+    const grades = datos?.grades?.[subjectId];
+    if (!grades) continue;
+    const lapsoGrades = ['1er', '2do', '3er'].map((lapso) => {
+      const period = Object.keys(grades).find((key) => normalizarTexto(key) === normalizarTexto(lapso));
+      const value = period ? grades[period] : null;
+      if (value === null || value === undefined || value === '') return null;
+      const grade = Number(value);
+      return Number.isFinite(grade) ? Math.round(grade) : null;
+    });
+    if (lapsoGrades.some((grade) => grade === null)) continue;
+    const exactGrade = Number((lapsoGrades.reduce((sum, grade) => sum + grade, 0) / 3).toFixed(2));
+    const roundedGrade = Math.round(exactGrade);
+    if (materiaNormalizada === 'crp' || materiaNormalizada === 'frances') {
+      if (roundedGrade >= 19) return 'A';
+      if (roundedGrade >= 16) return 'B';
+      if (roundedGrade >= 12) return 'C';
+      if (roundedGrade >= 10) return 'D';
+      if (roundedGrade >= 1) return 'E';
+      return '-';
+    }
+    return String(roundedGrade);
+  }
+  return null;
+};
+
 const coincideConEstudiante = (registro, estudiante) => {
   const cedulaKey = obtenerClaveEstudiante(estudiante, 'cedula');
   const nombreKey = obtenerClaveEstudiante(estudiante, 'nombre');
@@ -126,26 +173,12 @@ const NOTAS_PREDETERMINADAS_28000002 = {
 
 const extraerValorColumna = (datos, materia, lapso) => {
   const materiaNormalizada = normalizarTexto(materia).replace(/[^a-z0-9]+/g, ' ').trim();
-  const idsMateria = {
-    castellano: ['castellano'],
-    ingles: ['ingles'],
-    matematica: ['matematicas', 'matematica'],
-    matematicas: ['matematicas', 'matematica'],
-    crp: ['frances', 'crp'],
-    'educacion fisica': ['educacion-fisica'],
-    'arte y patrimonio': ['arte-patrimonio'],
-    'ciencias naturales': ['ciencias-naturales'],
-    fisica: ['fisica'],
-    quimica: ['quimica'],
-    biologia: ['biologia'],
-    'ciencias de la tierra': ['ciencias-tierra'],
-    'formacion para la soberania': ['formacion-soberania'],
-    ghc: ['ghc'],
-    'geografia historia y ciudadania': ['ghc'],
-    'orientacion y convivencia': ['orientacion-convivencia'],
-    frances: ['frances'],
-  };
-  const savedGradeEntries = (idsMateria[materiaNormalizada] || [])
+  const idsMateria = IDS_MATERIA_POR_NOMBRE[materiaNormalizada] || [];
+  if (normalizarTexto(lapso) === 'final') {
+    const definitiveGrade = calcularNotaFinalDesdeLapsos(datos, idsMateria, materiaNormalizada);
+    if (definitiveGrade !== null) return definitiveGrade;
+  }
+  const savedGradeEntries = idsMateria
     .map((subjectId) => {
       const grades = datos?.grades?.[subjectId];
       const period = Object.keys(grades || {}).find((key) => normalizarTexto(key) === normalizarTexto(lapso));
