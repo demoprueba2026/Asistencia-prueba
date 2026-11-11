@@ -92,6 +92,8 @@ const getPortalStudentFields = (student) => {
     paid_amount: isExempt ? Math.max(30, Number(student.paid_amount ?? student.paidAmount ?? 0)) : (student.paid_amount ?? student.paidAmount ?? 0),
     payments: student.payments || {},
     grades: student.grades || {},
+    pendingSubjects: student.pending_subjects || student.pendingSubjects || [],
+    matterPendingSubjects: student.matter_pending_subjects || student.matterPendingSubjects || [],
   };
 };
 
@@ -102,7 +104,7 @@ const publicStudentLookup = async (req, res, next) => {
       const filter = req.query.id
         ? `id=eq.${encodeURIComponent(String(req.query.id))}`
         : `cedula=eq.${encodeURIComponent(String(req.query.cedula))}`;
-      const columns = encodeURIComponent('id,name,cedula,year,"BoletaVisible",payment_status,paid_amount,payments,grades');
+      const columns = encodeURIComponent('id,name,cedula,year,"BoletaVisible",payment_status,paid_amount,payments,grades,pending_subjects,matter_pending_subjects');
       const response = await supabaseFetch(`/students?select=${columns}&${filter}&limit=1`);
       const rows = await response.json().catch(() => []);
       if (!response.ok) return res.status(response.status).json({ error: 'No se pudo consultar la boleta.' });

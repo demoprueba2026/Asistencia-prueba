@@ -75,6 +75,8 @@ const publicPortalRecord = (student) => {
     paid_amount: isExempt ? Math.max(30, safeNumber(student.paid_amount, 0)) : safeNumber(student.paid_amount, 0),
     payments: student.payments || {},
     grades: student.grades || {},
+    pendingSubjects: student.pending_subjects ?? student.pendingSubjects ?? [],
+    matterPendingSubjects: student.matter_pending_subjects ?? student.matterPendingSubjects ?? [],
   };
 };
 
@@ -147,7 +149,7 @@ module.exports = async function handler(req, res) {
           filters.push(`year=in.(${allowedYears.join(',')})`);
         }
         const columns = publicLookup
-          ? 'id,name,cedula,year,"BoletaVisible",payment_status,paid_amount,payments,grades'
+          ? 'id,name,cedula,year,"BoletaVisible",payment_status,paid_amount,payments,grades,pending_subjects,matter_pending_subjects'
           : '*';
         const queryOptions = [`select=${encodeURIComponent(columns)}`, ...filters, 'order=name.asc'];
         if (publicLookup) queryOptions.push('limit=1');

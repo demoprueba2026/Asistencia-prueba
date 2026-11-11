@@ -230,10 +230,10 @@
     /* FORMATO HOJA EXCEL / OFICIAL */
     .boletin-paper {
       background: #ffffff;
-      max-width: 800px;
+      max-width: 650px;
       width: 100%;
       margin: 0 auto;
-      padding: 25px 30px;
+      padding: 18px 22px;
       box-shadow: 0 0 15px rgba(0,0,0,0.3);
       color: #000000;
       font-family: Calibri, sans-serif;
@@ -253,14 +253,15 @@
     }
     
     .ministerio-logo-img {
-      width: 160px;
-      height: 90px;
+      width: 105px;
+      height: 72px;
       display: block;
+      object-fit: contain;
     }
 
     .sello-logo-img {
-      width: 140px;
-      height: 140px;
+      width: 88px;
+      height: 88px;
       object-fit: contain;
       display: block;
       margin-left: auto;
@@ -296,10 +297,10 @@
       width: 100%;
       border-top: 1.5px solid #000;
       border-bottom: 1.5px solid #000;
-      padding: 6px 0;
-      margin-bottom: 12px;
+      padding: 4px 0;
+      margin-bottom: 8px;
       font-family: Calibri, sans-serif;
-      font-size: 11pt;
+      font-size: 8.5pt;
       font-style: italic;
       font-weight: bold;
     }
@@ -319,7 +320,7 @@
       table-layout: fixed;
       border-collapse: collapse;
       border: 1.5px solid #000000;
-      font-size: 11pt;
+      font-size: 8pt;
       text-align: center;
       color: #000000;
       font-family: Calibri, sans-serif;
@@ -327,15 +328,15 @@
 
     .tabla-notas th, .tabla-notas td {
       border: 1px solid #000000;
-      padding: 2px 4px;
-      height: 20px;
+      padding: 1px 3px;
+      height: 16px;
       vertical-align: middle;
     }
 
     /* ENCABEZADOS DE TABLA EN ARIAL 11pt CON FONDO GRIS */
     .tabla-notas thead th, .tabla-pendiente thead th {
       font-family: Arial, sans-serif;
-      font-size: 11pt;
+      font-size: 8pt;
       font-weight: bold;
       font-style: italic;
       background-color: #a6a6a6;
@@ -346,7 +347,7 @@
       text-align: left !important;
       padding-left: 6px !important;
       font-family: Calibri, sans-serif;
-      font-size: 11pt;
+      font-size: 8pt;
       font-style: italic;
       font-weight: bold;
       width: 38%;
@@ -354,7 +355,7 @@
 
     .tabla-notas tbody td {
       font-family: Calibri, sans-serif;
-      font-size: 11pt;
+      font-size: 8pt;
       font-weight: bold;
       font-style: italic;
     }
@@ -362,7 +363,7 @@
     .row-promedio td, .row-seccion-header td {
       background-color: #e0e0e0;
       font-family: Calibri, sans-serif;
-      font-size: 11pt;
+      font-size: 8pt;
       font-weight: bold;
       font-style: italic;
     }
@@ -371,7 +372,7 @@
       text-align: center;
       text-transform: uppercase;
       font-family: Arial, sans-serif;
-      font-size: 10pt;
+      font-size: 7.5pt;
     }
 
     /* MATERIA PENDIENTE */
@@ -379,10 +380,10 @@
       width: 58%;
       border-collapse: collapse;
       border: 1.5px solid #000;
-      font-size: 11pt;
+      font-size: 8pt;
       text-align: center;
-      margin-top: 12px;
-      margin-bottom: 15px;
+      margin-top: 8px;
+      margin-bottom: 10px;
       font-family: Calibri, sans-serif;
       font-weight: bold;
       font-style: italic;
@@ -390,16 +391,17 @@
 
     .tabla-pendiente th, .tabla-pendiente td {
       border: 1px solid #000;
-      padding: 2px 4px;
+      padding: 1px 3px;
     }
+    .tabla-pendiente[hidden] { display: none; }
 
     /* SECCIÓN DE GRÁFICOS */
     .graficos-container {
       width: 100%;
       display: flex;
       justify-content: space-between;
-      margin-top: 15px;
-      margin-bottom: 25px;
+      margin-top: 10px;
+      margin-bottom: 18px;
     }
 
     .grafico-box {
@@ -409,7 +411,7 @@
 
     .grafico-box h4 {
       font-family: Calibri, sans-serif;
-      font-size: 11pt;
+      font-size: 8pt;
       font-style: italic;
       font-weight: bold;
       margin-bottom: 5px;
@@ -417,16 +419,16 @@
 
     .grafico-box canvas {
       width: 100% !important;
-      height: 160px !important;
+      height: 112px !important;
     }
 
     /* FIRMAS Y SELLO */
     .firmas-container {
       width: 100%;
-      margin-top: 40px;
+      margin-top: 24px;
       border-collapse: collapse;
       font-family: Calibri, sans-serif;
-      font-size: 11pt;
+      font-size: 8pt;
       font-weight: bold;
       font-style: italic;
       text-align: center;
@@ -577,7 +579,7 @@
       .top-bar button { width: auto; margin-left: auto; }
       .document-tabs { flex-wrap: wrap; }
       .document-tab { min-width: 140px; }
-      .boletin-paper { padding: 16px 10px; overflow-x: auto; }
+      .boletin-paper { padding: 14px 10px; overflow-x: auto; }
       .header-table { min-width: 620px; }
       .tabla-notas, .tabla-pendiente { min-width: 720px; }
       .graficos-container { gap: 12px; overflow-x: auto; justify-content: flex-start; }
@@ -782,7 +784,7 @@
       </table>
 
       <!-- TABLA MATERIA PENDIENTE -->
-      <table class="tabla-pendiente">
+      <table id="tablaMateriaPendiente" class="tabla-pendiente" hidden>
         <thead>
           <tr>
             <th style="width: 52%; text-align: center;">Materia Pendiente</th>
@@ -792,22 +794,7 @@
             <th style="width: 12%;">M4</th>
           </tr>
         </thead>
-        <tbody>
-          <tr>
-            <td style="text-align: center;">******</td>
-            <td>***</td>
-            <td>***</td>
-            <td>***</td>
-            <td>***</td>
-          </tr>
-          <tr>
-            <td style="text-align: center;">******</td>
-            <td>***</td>
-            <td>***</td>
-            <td>***</td>
-            <td>***</td>
-          </tr>
-        </tbody>
+        <tbody id="tablaMateriaPendienteBody"></tbody>
       </table>
 
       <!-- SECCIÓN DE GRÁFICOS DE RENDIMIENTO POR LAPSO -->

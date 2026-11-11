@@ -231,12 +231,56 @@ const actualizarTexto = (id, valor) => {
   if (elemento) elemento.textContent = valor || '-';
 };
 
+const obtenerRevisionesDeMateria = (estudiante, materia) => {
+  const materiaNormalizada = normalizarTexto(materia).replace(/[^a-z0-9]+/g, ' ').trim();
+  const idsMateria = IDS_MATERIA_POR_NOMBRE[materiaNormalizada] || [];
+  const asignaciones = Array.isArray(estudiante?.pendingSubjects) ? estudiante.pendingSubjects : [];
+  return asignaciones.find((asignacion) => {
+    if (idsMateria.includes(asignacion.subjectId)) return true;
+    const nombreAsignacion = normalizarTexto(asignacion.subjectLabel || '').replace(/[^a-z0-9]+/g, ' ').trim();
+    const idsAsignacion = IDS_MATERIA_POR_NOMBRE[nombreAsignacion] || [];
+    return idsMateria.some((id) => idsAsignacion.includes(id));
+  })?.revisions || [];
+};
+
+const renderizarMateriasPendientes = (estudiante) => {
+  const tabla = document.getElementById('tablaMateriaPendiente');
+  const cuerpo = document.getElementById('tablaMateriaPendienteBody');
+  if (!tabla || !cuerpo) return;
+
+  const asignaciones = Array.isArray(estudiante?.matterPendingSubjects)
+    ? estudiante.matterPendingSubjects
+    : [];
+  cuerpo.replaceChildren();
+  tabla.hidden = asignaciones.length === 0;
+  asignaciones.forEach((asignacion) => {
+    const fila = cuerpo.insertRow();
+    const materia = document.createElement('td');
+    materia.textContent = asignacion.subjectLabel || asignacion.subjectId || '-';
+    fila.appendChild(materia);
+    for (let index = 0; index < 4; index += 1) {
+      const celda = fila.insertCell();
+      const nota = asignacion.revisions?.[index];
+      celda.textContent = nota === null || nota === undefined || nota === '' ? '-' : String(nota);
+    }
+  });
+};
+
+const calcularPromedioPorLapso = (estudiante, materias, lapso) => {
+  const notas = materias
+    .map(([materia]) => extraerValorColumna(estudiante, materia, lapso))
+    .map((nota) => Number.parseFloat(String(nota).replace(',', '.')))
+    .filter(Number.isFinite);
+  if (!notas.length) return null;
+  return String(Math.round(notas.reduce((suma, nota) => suma + nota, 0) / notas.length));
+};
+
 const renderizarBoletaEstudiante = (estudiante) => {
   const materias = [
     ['Castellano', 'CA'],
     ['Inglés', 'LE'],
     ['Matemáticas', 'MA'],
-    ['Educación Fisíca', 'EF'],
+    ['Educación Física', 'EF'],
     ['Arte y Patrimonio', 'AyP'],
     ['Ciencias Naturales', 'CN'],
     ['Geografía, historia y ciudadania', 'GHC'],
@@ -260,6 +304,10 @@ const renderizarBoletaEstudiante = (estudiante) => {
       const segundoLapso = escapeHtml(extraerValorColumna(estudiante, materia, '2do'));
       const tercerLapso = escapeHtml(extraerValorColumna(estudiante, materia, '3er'));
       const finalLapso = escapeHtml(extraerValorColumna(estudiante, materia, 'Final'));
+      const revisiones = obtenerRevisionesDeMateria(estudiante, materia);
+      const revisionCells = [0, 1, 2]
+        .map((index) => `<td>${escapeHtml(revisiones[index] ?? '-')}</td>`)
+        .join('');
 
       return `
         <tr>
@@ -269,16 +317,20 @@ const renderizarBoletaEstudiante = (estudiante) => {
           <td>${tercerLapso}</td>
           <td>${finalLapso}</td>
           <td>-</td><td>-</td><td>-</td><td>-</td>
-          <td>-</td><td>-</td><td>-</td>
+          ${revisionCells}
         </tr>
       `;
     }).join('');
   }
 
-  actualizarTexto('prom1er', extraerValorColumna(estudiante, 'Promedio del estudiante', '1er'));
-  actualizarTexto('prom2do', extraerValorColumna(estudiante, 'Promedio del estudiante', '2do'));
-  actualizarTexto('prom3er', extraerValorColumna(estudiante, 'Promedio del estudiante', '3er'));
-  actualizarTexto('promFinal', extraerValorColumna(estudiante, 'Promedio del estudiante', 'Final'));
+  actualizarTexto('prom1er', calcularPromedioPorLapso(estudiante, materias, '1er')
+    || extraerValorColumna(estudiante, 'Promedio del estudiante', '1er'));
+  actualizarTexto('prom2do', calcularPromedioPorLapso(estudiante, materias, '2do')
+    || extraerValorColumna(estudiante, 'Promedio del estudiante', '2do'));
+  actualizarTexto('prom3er', calcularPromedioPorLapso(estudiante, materias, '3er')
+    || extraerValorColumna(estudiante, 'Promedio del estudiante', '3er'));
+  actualizarTexto('promFinal', calcularPromedioPorLapso(estudiante, materias, 'Final')
+    || extraerValorColumna(estudiante, 'Promedio del estudiante', 'Final'));
 
   const ano = estudiante[obtenerClaveEstudiante(estudiante, 'ano')];
   const seccionKey = Object.keys(estudiante).find((key) => normalizarTexto(key).includes('seccion'));
@@ -290,6 +342,7 @@ const renderizarBoletaEstudiante = (estudiante) => {
   actualizarTexto('crp2do', extraerValorColumna(estudiante, 'Francés', '2do'));
   actualizarTexto('crp3er', extraerValorColumna(estudiante, 'Francés', '3er'));
   actualizarTexto('crpFinal', extraerValorColumna(estudiante, 'Francés', 'Final'));
+  renderizarMateriasPendientes(estudiante);
   renderizarGraficos(materias.slice(0, 7), estudiante, estudiante, estudiante);
 };
 
@@ -587,6 +640,12 @@ document.getElementById('loginEstudianteForm').addEventListener('submit', async 
     alumnoEncontrado.grades = (estudianteSupabase?.grades && Object.keys(estudianteSupabase.grades).length)
       ? estudianteSupabase.grades
       : (alumnoEncontrado.grades || (esExento ? NOTAS_PREDETERMINADAS_28000002 : {}));
+    alumnoEncontrado.pendingSubjects = estudianteSupabase?.pendingSubjects
+      || estudianteSupabase?.pending_subjects
+      || [];
+    alumnoEncontrado.matterPendingSubjects = estudianteSupabase?.matterPendingSubjects
+      || estudianteSupabase?.matter_pending_subjects
+      || [];
 
     datosEstudianteActual = alumnoEncontrado;
     actualizarUrlEstudiante(estudianteSupabase?.id || alumnoEncontrado.id);
@@ -690,6 +749,12 @@ const cargarEstudianteDesdeUrl = async () => {
     alumnoEncontrado.grades = (estudianteSupabase?.grades && Object.keys(estudianteSupabase.grades).length)
       ? estudianteSupabase.grades
       : (alumnoEncontrado.grades || (esExento ? NOTAS_PREDETERMINADAS_28000002 : {}));
+    alumnoEncontrado.pendingSubjects = estudianteSupabase?.pendingSubjects
+      || estudianteSupabase?.pending_subjects
+      || [];
+    alumnoEncontrado.matterPendingSubjects = estudianteSupabase?.matterPendingSubjects
+      || estudianteSupabase?.matter_pending_subjects
+      || [];
     datosEstudianteActual = alumnoEncontrado;
     boletaAutorizadaActual = esExento ? true : await verificarAutorizacionBoleta(datosEstudianteActual);
     mostrarDashboard();
