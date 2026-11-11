@@ -13,6 +13,11 @@ const {
   isSubjectAllowed,
   filterStudentFieldsForUser,
 } = require('./lib/security');
+const {
+  getStudentIdentifierVariants,
+  normalizeStudentIdentifier,
+  studentIdentifierMatches,
+} = require('./lib/student-identifier');
 
 dotenv.config();
 
@@ -103,18 +108,24 @@ const publicStudentLookup = async (req, res, next) => {
     if (IS_SUPABASE_CONFIGURED) {
       const filter = req.query.id
         ? `id=eq.${encodeURIComponent(String(req.query.id))}`
-        : `cedula=eq.${encodeURIComponent(String(req.query.cedula))}`;
+        : `cedula=in.(${getStudentIdentifierVariants(req.query.cedula).map(encodeURIComponent).join(',')})`;
       const columns = encodeURIComponent('id,name,cedula,year,"BoletaVisible",payment_status,paid_amount,payments,grades,pending_subjects,matter_pending_subjects');
-      const response = await supabaseFetch(`/students?select=${columns}&${filter}&limit=1`);
+      const response = await supabaseFetch(`/students?select=${columns}&${filter}&limit=10`);
       const rows = await response.json().catch(() => []);
       if (!response.ok) return res.status(response.status).json({ error: 'No se pudo consultar la boleta.' });
-      return res.json(Array.isArray(rows) ? rows.map(getPortalStudentFields) : []);
+      const students = Array.isArray(rows) ? rows : [];
+      const matchedStudents = students.filter((student) => (
+        req.query.id
+          ? String(student.id) === String(req.query.id)
+          : studentIdentifierMatches(student.cedula, req.query.cedula)
+      ));
+      return res.json(matchedStudents.slice(0, 1).map(getPortalStudentFields));
     }
 
     const data = loadAttendanceData();
     const student = req.query.id
       ? data.students[String(req.query.id)]
-      : Object.values(data.students).find((row) => String(row.cedula || '') === String(req.query.cedula));
+      : Object.values(data.students).find((row) => studentIdentifierMatches(row.cedula, req.query.cedula));
     return res.json(student ? [getPortalStudentFields(normalizeStudentRecord(student))] : []);
   } catch (error) {
     console.error('Error consultando la boleta por identificador:', error);

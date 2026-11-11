@@ -11,6 +11,10 @@ const {
   isYearAllowed,
   filterStudentFieldsForUser,
 } = require('../lib/security');
+const {
+  getStudentIdentifierVariants,
+  studentIdentifierMatches,
+} = require('../lib/student-identifier');
 
 let rawUrl = (
   process.env.SUPABASE_URL ||
@@ -140,7 +144,10 @@ module.exports = async function handler(req, res) {
         const filters = [];
         if (year) filters.push(`year=eq.${encodeURIComponent(String(year))}`);
         if (id) filters.push(`id=eq.${encodeURIComponent(String(id))}`);
-        if (cedula) filters.push(`cedula=eq.${encodeURIComponent(String(cedula))}`);
+        if (cedula) {
+          const variants = getStudentIdentifierVariants(cedula);
+          filters.push(`cedula=in.(${variants.map(encodeURIComponent).join(',')})`);
+        }
         if (!publicLookup && !year && !staffUser.esAdmin) {
           const allowedYears = staffUser.allowedYears.map(Number).filter(Number.isInteger);
           if (!allowedYears.length) {
@@ -152,7 +159,7 @@ module.exports = async function handler(req, res) {
           ? 'id,name,cedula,year,"BoletaVisible",payment_status,paid_amount,payments,grades,pending_subjects,matter_pending_subjects'
           : '*';
         const queryOptions = [`select=${encodeURIComponent(columns)}`, ...filters, 'order=name.asc'];
-        if (publicLookup) queryOptions.push('limit=1');
+        if (publicLookup) queryOptions.push('limit=10');
         const query = `?${queryOptions.join('&')}`;
         const response = await supabaseFetch(`/students${query}`);
         const data = await response.json().catch(() => []);
@@ -162,7 +169,12 @@ module.exports = async function handler(req, res) {
 
       const students = Array.isArray(data) ? data : [];
       if (publicLookup) {
-        return res.status(200).json(students.map(publicPortalRecord));
+        const matchedStudents = students.filter((student) => (
+          id
+            ? String(student.id) === String(id)
+            : studentIdentifierMatches(student.cedula, cedula)
+        ));
+        return res.status(200).json(matchedStudents.slice(0, 1).map(publicPortalRecord));
       }
       const attendanceDate = date;
       if (attendanceDate && students.length) {

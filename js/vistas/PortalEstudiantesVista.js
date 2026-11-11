@@ -137,8 +137,13 @@ const parseCsvLine = (line) => {
 };
 
 const obtenerNotasDeSheets = async () => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
   try {
-    const response = await fetch(`${SHEET_CSV_URL}&t=${Date.now()}`, { cache: 'no-store' });
+    const response = await fetch(`${SHEET_CSV_URL}&t=${Date.now()}`, {
+      cache: 'no-store',
+      signal: controller.signal,
+    });
     if (!response.ok) throw new Error(`Google Sheets respondió con ${response.status}`);
 
     const text = await response.text();
@@ -153,6 +158,8 @@ const obtenerNotasDeSheets = async () => {
   } catch (error) {
     console.error('Error al leer Google Sheets:', error);
     return null;
+  } finally {
+    clearTimeout(timeout);
   }
 };
 const CEDULA_ACCESO_DIRECTO = '28000002';
@@ -557,17 +564,20 @@ document.getElementById('loginEstudianteForm').addEventListener('submit', async 
   msjError.style.display = 'none';
 
   try {
-    let todasLasNotas = null;
+    let estudianteSupabase = null;
     try {
-      todasLasNotas = await obtenerNotasDeSheets();
-    } catch (sheetErr) {
-      console.warn('Error leyendo Google Sheets:', sheetErr);
+      estudianteSupabase = await obtenerEstudiantePagosBackend({ cedula: cedulaIngresada });
+    } catch (errSupabase) {
+      console.warn('Error consultando estudiante en backend:', errSupabase);
     }
 
-    if (!todasLasNotas && !esExento) {
-      msjError.textContent = '❌ Error conectando con la base de datos.';
-      msjError.style.display = 'block';
-      return;
+    let todasLasNotas = null;
+    if (!estudianteSupabase || !Object.keys(estudianteSupabase.grades || {}).length) {
+      try {
+        todasLasNotas = await obtenerNotasDeSheets();
+      } catch (sheetErr) {
+        console.warn('Error leyendo Google Sheets:', sheetErr);
+      }
     }
 
     let alumnoEncontrado = todasLasNotas?.find((estudiante) => {
@@ -575,33 +585,45 @@ document.getElementById('loginEstudianteForm').addEventListener('submit', async 
       return cedulaKey && normalizarCedula(estudiante[cedulaKey]) === normalizarCedula(cedulaIngresada);
     });
 
+    if (!alumnoEncontrado && estudianteSupabase) {
+      alumnoEncontrado = {
+        Nombre: estudianteSupabase.name || 'Estudiante',
+        name: estudianteSupabase.name || 'Estudiante',
+        cedula: estudianteSupabase.cedula || cedulaIngresada,
+        ano: estudianteSupabase.year ? `${estudianteSupabase.year}º` : '1º',
+        year: estudianteSupabase.year || 1,
+        seccion: 'U',
+        id: estudianteSupabase.id,
+        grades: estudianteSupabase.grades || {},
+        BoletaVisible: estudianteSupabase.BoletaVisible,
+      };
+    }
+
     if (!alumnoEncontrado && !esExento) {
-      msjError.textContent = '❌ Cédula no encontrada. Verifica los datos ingresados.';
+      msjError.textContent = !estudianteSupabase && !todasLasNotas
+        ? '❌ Error conectando con la base de datos.'
+        : '❌ Cédula no encontrada. Verifica los datos ingresados.';
       msjError.style.display = 'block';
       return;
     }
 
-    let estudianteSupabase = null;
-    try {
-      if (alumnoEncontrado) {
-        const nombreKey = obtenerClaveEstudiante(alumnoEncontrado, 'nombre');
-        alumnoEncontrado.Nombre = alumnoEncontrado[nombreKey];
-        estudianteSupabase = await obtenerEstudiantePagosBackend(alumnoEncontrado);
-      } else if (esExento) {
-        estudianteSupabase = await obtenerEstudiantePagosBackend({ cedula: CEDULA_ACCESO_DIRECTO });
-        if (!estudianteSupabase) {
-          const backendData = await obtenerEstadoGlobalBackend();
-          for (let yr in backendData?.years || {}) {
-            const st = (backendData.years[yr]?.students || []).find((s) => esCedulaExenta(s.cedula));
-            if (st) {
-              estudianteSupabase = st;
-              break;
-            }
+    if (alumnoEncontrado) {
+      const nombreKey = obtenerClaveEstudiante(alumnoEncontrado, 'nombre');
+      alumnoEncontrado.Nombre = alumnoEncontrado[nombreKey] || alumnoEncontrado.Nombre || alumnoEncontrado.name;
+    }
+
+    if (esExento && !estudianteSupabase) {
+      estudianteSupabase = await obtenerEstudiantePagosBackend({ cedula: CEDULA_ACCESO_DIRECTO });
+      if (!estudianteSupabase) {
+        const backendData = await obtenerEstadoGlobalBackend();
+        for (let yr in backendData?.years || {}) {
+          const st = (backendData.years[yr]?.students || []).find((s) => esCedulaExenta(s.cedula));
+          if (st) {
+            estudianteSupabase = st;
+            break;
           }
         }
       }
-    } catch (errSupabase) {
-      console.warn('Error consultando estudiante en backend:', errSupabase);
     }
 
     if (esExento) {
@@ -772,8 +794,10 @@ const mostrarDashboard = () => {
   const nombre = datosEstudianteActual?.Nombre || datosEstudianteActual?.name || '';
   const cedulaKey = obtenerClaveEstudiante(datosEstudianteActual, 'cedula');
   let cedula = datosEstudianteActual?.[cedulaKey] || datosEstudianteActual?.cedula || '';
-  if (cedula && !cedula.toUpperCase().startsWith('V-')) {
+  if (cedula && !/^[VE]-?/i.test(cedula)) {
     cedula = `V-${cedula}`;
+  } else if (/^[VE]\d/i.test(cedula)) {
+    cedula = cedula.replace(/^([VE])(?=\d)/i, '$1-');
   }
   const ano = datosEstudianteActual?.[obtenerClaveEstudiante(datosEstudianteActual, 'ano')]
     || (datosEstudianteActual?.year ? `${datosEstudianteActual.year}º` : '1º');
