@@ -52,6 +52,12 @@ const safeNumber = (value, fallback = 0) => {
 };
 
 const hasGrades = (grades) => grades && typeof grades === 'object' && Object.keys(grades).length > 0;
+const normalizePendingSubjectFields = (student) => ({
+  ...student,
+  pendingSubjects: student.pending_subjects ?? student.pendingSubjects ?? [],
+  matterPendingSubjects: student.matter_pending_subjects ?? student.matterPendingSubjects ?? [],
+});
+
 const publicPortalRecord = (student) => {
   const isExempt = String(student.cedula || '').trim().replace(/\D/g, '') === '28000002';
   const isAuthorized = String(student.BoletaVisible || '').trim().toUpperCase() === 'SI' || isExempt;
@@ -192,7 +198,9 @@ module.exports = async function handler(req, res) {
         });
       }
 
-      return res.status(200).json(students.map((student) => filterStudentFieldsForUser(student, staffUser)));
+      return res.status(200).json(students.map((student) => (
+        filterStudentFieldsForUser(normalizePendingSubjectFields(student), staffUser)
+      )));
     }
 
     if (req.method === 'POST') {
@@ -236,6 +244,8 @@ module.exports = async function handler(req, res) {
         paid_amount: safeNumber(paidAmount, 0),
         payments: payments || {},
         ...(hasGrades(grades) ? { grades } : {}),
+        pending_subjects: [],
+        matter_pending_subjects: [],
         attendance: {},
         attendance_by_date: {},
       };
@@ -254,12 +264,19 @@ module.exports = async function handler(req, res) {
       }
 
       const saved = Array.isArray(data) ? data[0] : data;
-      return res.status(201).json(filterStudentFieldsForUser(saved || payload, staffUser));
+      return res.status(201).json(filterStudentFieldsForUser(
+        normalizePendingSubjectFields(saved || payload),
+        staffUser,
+      ));
     }
 
     if (req.method === 'PATCH') {
       const body = await parseBody(req);
       const { id, name, cedula, email, phone, year, BoletaVisible, paymentStatus, paidAmount, payments, grades, attendance, attendanceByDate } = body || {};
+      if (['pendingSubjects', 'pending_subjects', 'matterPendingSubjects', 'matter_pending_subjects']
+        .some((key) => body[key] !== undefined && !Array.isArray(body[key]))) {
+        return res.status(400).json({ error: 'Las materias pendientes deben enviarse como una lista.' });
+      }
       const patchPermissions = getStudentPatchPermissions(body);
       const staffUser = await requireStaff(req, res, patchPermissions);
       if (!staffUser) return;
@@ -298,6 +315,10 @@ module.exports = async function handler(req, res) {
       if (paidAmount !== undefined) changes.paid_amount = safeNumber(paidAmount, 0);
       if (payments !== undefined) changes.payments = payments;
       if (grades !== undefined && typeof grades === 'object' && grades !== null) changes.grades = grades;
+      if (body.pendingSubjects !== undefined) changes.pending_subjects = body.pendingSubjects;
+      if (body.pending_subjects !== undefined) changes.pending_subjects = body.pending_subjects;
+      if (body.matterPendingSubjects !== undefined) changes.matter_pending_subjects = body.matterPendingSubjects;
+      if (body.matter_pending_subjects !== undefined) changes.matter_pending_subjects = body.matter_pending_subjects;
       if (attendance !== undefined) changes.attendance = attendance;
       if (attendanceByDate !== undefined) changes.attendance_by_date = attendanceByDate;
       if (body?.status !== undefined) changes.status = body.status;
@@ -315,7 +336,9 @@ module.exports = async function handler(req, res) {
       }
 
       const updated = Array.isArray(data) ? data[0] : data;
-      return res.status(200).json(updated ? filterStudentFieldsForUser(updated, staffUser) : { id });
+      return res.status(200).json(updated
+        ? filterStudentFieldsForUser(normalizePendingSubjectFields(updated), staffUser)
+        : { id });
     }
 
     if (req.method === 'DELETE') {

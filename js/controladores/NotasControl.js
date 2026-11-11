@@ -65,7 +65,10 @@ let pendingDrafts = {};
 let pendingMatterStudentId = '';
 let pendingMatterDrafts = {};
 
-const canManagePendingSubjects = () => currentUser?.puedeGestionarPendientes === true;
+const canManagePendingSubjects = () => currentUser?.puedeGestionarPendientes === true
+  || currentUser?.puedeCargarNotas === true
+  || currentUser?.puedeGestionarActividades === true
+  || currentUser?.esAdmin === true;
 const setPendingStatus = (message, type = '') => {
   pendingSubjectsStatus.textContent = message;
   pendingSubjectsStatus.className = `pending-status${type ? ` ${type}` : ''}`;
@@ -961,10 +964,8 @@ const savePendingAssignments = async () => {
   } catch (error) {
     console.error(`No se pudieron guardar las materias pendientes de ${student.name}:`, error);
     let migrationHint = '';
-    if (/matter_pending_subjects.*(column|schema cache)|column.*matter_pending_subjects/i.test(error.message)) {
-      migrationHint = ' Ejecuta supabase-matter-pending-subjects.sql en Supabase y vuelve a intentarlo.';
-    } else if (/pending_subjects.*(column|schema cache)|column.*pending_subjects/i.test(error.message)) {
-      migrationHint = ' Ejecuta supabase-pending-subjects.sql en Supabase y vuelve a intentarlo.';
+    if (/matter_pending_subjects|pending_subjects/i.test(error.message)) {
+      migrationHint = ' Ejecuta supabase-student-pending-subjects.sql en Supabase y vuelve a intentarlo.';
     }
     setPendingStatus(`No se pudo guardar la Recuperación o Materia Pendiente. ${error.message}${migrationHint}`, 'error');
   } finally {
@@ -1171,8 +1172,8 @@ const savePendingMatterAssignments = async () => {
     setPendingMatterStatus('Notas M1, M2, M3 y M4 guardadas para Materia Pendiente.', 'success');
   } catch (error) {
     console.error(`No se pudieron guardar las notas de Materia Pendiente de ${student.name}:`, error);
-    const migrationHint = /matter_pending_subjects.*(column|schema cache)|column.*matter_pending_subjects/i.test(error.message)
-      ? ' Ejecuta supabase-matter-pending-subjects.sql en Supabase y vuelve a intentarlo.'
+    const migrationHint = /matter_pending_subjects|pending_subjects/i.test(error.message)
+      ? ' Ejecuta supabase-student-pending-subjects.sql en Supabase y vuelve a intentarlo.'
       : '';
     setPendingMatterStatus(`No se pudieron guardar las notas de Materia Pendiente. ${error.message}${migrationHint}`, 'error');
   } finally {
@@ -1517,7 +1518,7 @@ const saveGrades = async () => {
     const details = missingGradesColumn
       ? ' Supabase no tiene la columna grades. Ejecuta supabase-grades.sql en el editor SQL de Supabase y vuelve a intentarlo.'
       : missingRecoveryColumn
-        ? ' Supabase no tiene la columna pending_subjects. Ejecuta supabase-pending-subjects.sql en el editor SQL de Supabase y vuelve a intentarlo.'
+        ? ' Supabase no tiene las columnas de materias pendientes. Ejecuta supabase-student-pending-subjects.sql en el editor SQL de Supabase y vuelve a intentarlo.'
       : ` Detalle: ${errors[0].message}`;
     setStatus(`Falló el guardado para: ${failedStudents}.${details}`, 'error');
   } else {

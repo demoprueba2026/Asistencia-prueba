@@ -24,6 +24,8 @@ create table if not exists public.students (
   attendance jsonb not null default '{}'::jsonb,
   attendance_by_date jsonb not null default '{}'::jsonb,
   grades jsonb not null default '{}'::jsonb,
+  pending_subjects jsonb not null default '[]'::jsonb,
+  matter_pending_subjects jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now()
 );
 
@@ -41,6 +43,8 @@ alter table public.students add column if not exists paid_amount numeric not nul
 alter table public.students add column if not exists attendance jsonb not null default '{}'::jsonb;
 alter table public.students add column if not exists attendance_by_date jsonb not null default '{}'::jsonb;
 alter table public.students add column if not exists grades jsonb not null default '{}'::jsonb;
+alter table public.students add column if not exists pending_subjects jsonb not null default '[]'::jsonb;
+alter table public.students add column if not exists matter_pending_subjects jsonb not null default '[]'::jsonb;
 alter table public.students add column if not exists created_at timestamptz not null default now();
 
 -- ------------------------------------------------------------------------------

@@ -155,6 +155,8 @@ const normalizeStudentRecord = (row = {}, fallbackYear = 1) => {
     email: row.email || '',
     phone: row.phone || '',
     grades: row.grades || {},
+    pendingSubjects: row.pending_subjects || row.pendingSubjects || [],
+    matterPendingSubjects: row.matter_pending_subjects || row.matterPendingSubjects || [],
     year,
     status: row.status || '',
     paymentStatus: isExempt ? 'pago' : (row.payment_status || row.paymentStatus || 'no_pago'),
@@ -175,6 +177,8 @@ const toSafeStudentPayload = (student = {}, dateOverride = null) => ({
   email: student.email || null,
   phone: student.phone || null,
   ...(hasGrades(student.grades) ? { grades: student.grades } : {}),
+  pending_subjects: student.pendingSubjects || [],
+  matter_pending_subjects: student.matterPendingSubjects || [],
   year: Number(student.year || 1),
   status: student.status || '',
   payment_status: student.paymentStatus || 'no_pago',
@@ -542,6 +546,8 @@ app.post('/api/students', authorizeStaff('students.write'), async (req, res) => 
       paidAmount: Number(paidAmount || 0),
       payments: payments || {},
       ...(hasGrades(grades) ? { grades } : {}),
+      pendingSubjects: [],
+      matterPendingSubjects: [],
       attendance: {},
       attendanceByDate: {},
     };
@@ -568,6 +574,10 @@ app.post('/api/students', authorizeStaff('students.write'), async (req, res) => 
 
 app.patch('/api/students', authorizeStaff((req) => getStudentPatchPermissions(req.body)), async (req, res) => {
   const { id, name, cedula, email, phone, year, BoletaVisible, payments, paymentStatus, paidAmount, grades } = req.body || {};
+  const pendingSubjectFields = ['pendingSubjects', 'pending_subjects', 'matterPendingSubjects', 'matter_pending_subjects'];
+  if (pendingSubjectFields.some((key) => req.body?.[key] !== undefined && !Array.isArray(req.body[key]))) {
+    return res.status(400).json({ error: 'Las materias pendientes deben enviarse como una lista.' });
+  }
   if (!id) {
     return res.status(400).json({ error: 'Falta id del estudiante.' });
   }
@@ -602,6 +612,12 @@ app.patch('/api/students', authorizeStaff((req) => getStudentPatchPermissions(re
       ...(hasGrades(grades) ? { grades } : {}),
       payment_status: paymentStatus,
       paid_amount: paidAmount === undefined ? undefined : Number(paidAmount),
+      ...(req.body.pendingSubjects !== undefined || req.body.pending_subjects !== undefined
+        ? { pending_subjects: req.body.pendingSubjects ?? req.body.pending_subjects }
+        : {}),
+      ...(req.body.matterPendingSubjects !== undefined || req.body.matter_pending_subjects !== undefined
+        ? { matter_pending_subjects: req.body.matterPendingSubjects ?? req.body.matter_pending_subjects }
+        : {}),
     };
 
     if (req.body && typeof req.body === 'object' && req.body.attendance !== undefined) {
@@ -637,6 +653,10 @@ app.patch('/api/students', authorizeStaff((req) => getStudentPatchPermissions(re
     if (BoletaVisible !== undefined) student.BoletaVisible = BoletaVisible;
     if (payments !== undefined) student.payments = payments;
     if (hasGrades(grades)) student.grades = grades;
+    if (req.body.pendingSubjects !== undefined) student.pendingSubjects = req.body.pendingSubjects;
+    if (req.body.pending_subjects !== undefined) student.pendingSubjects = req.body.pending_subjects;
+    if (req.body.matterPendingSubjects !== undefined) student.matterPendingSubjects = req.body.matterPendingSubjects;
+    if (req.body.matter_pending_subjects !== undefined) student.matterPendingSubjects = req.body.matter_pending_subjects;
     if (paymentStatus !== undefined) student.paymentStatus = paymentStatus;
     if (paidAmount !== undefined) student.paidAmount = paidAmount;
     data.students[id] = student;
