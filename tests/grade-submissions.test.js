@@ -66,3 +66,29 @@ test('protects grades saved before submission markers existed', () => {
   const result = prepareGradePatch(previous, updated, false);
   assert.match(result.error, /solo un administrador/);
 });
+
+test('allows adding an empty activity without changing a submitted grade', () => {
+  const previous = prepareGradePatch({}, gradesWithAssessment(16), false).grades;
+  const updated = gradesWithAssessment(16);
+  updated.matematica.assessments['1er'].push({
+    id: 'actividad-2',
+    score: null,
+    earnedPoints: null,
+    earnedPointsManual: false,
+  });
+  const result = prepareGradePatch(previous, updated, false);
+  assert.equal(result.error, undefined);
+  assert.equal(result.grades.matematica.assessments['1er'][1].submitted, true);
+});
+
+test('does not allow adding a grade to a new activity for a submitted period', () => {
+  const previous = prepareGradePatch({}, gradesWithAssessment(16), false).grades;
+  const updated = gradesWithAssessment(16);
+  updated.matematica.assessments['1er'].push({
+    id: 'actividad-2',
+    score: 18,
+    earnedPoints: 4.5,
+  });
+  const result = prepareGradePatch(previous, updated, false);
+  assert.match(result.error, /solo un administrador/);
+});

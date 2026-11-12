@@ -1446,7 +1446,11 @@ const saveGrades = async () => {
     });
     savedAssessments[periodSelect.value] = assessmentEntries;
     subjectGrades.assessments = savedAssessments;
-    const weightedGrade = getWeightedGrade(String(student.id));
+    const periodGradeIsSubmitted = !currentUser?.esAdmin
+      && isStudentPeriodGradeSubmitted(student, subject, periodSelect.value);
+    const weightedGrade = periodGradeIsSubmitted
+      ? subjectGrades[periodSelect.value] ?? null
+      : getWeightedGrade(String(student.id));
     subjectGrades[periodSelect.value] = weightedGrade;
     const definitiveGrade = window.calculateDefinitiveGrade(subjectGrades);
     if (definitiveGrade) {
