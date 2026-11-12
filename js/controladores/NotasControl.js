@@ -1,5 +1,6 @@
 const API_BASE_URL = window.location.protocol === 'file:' ? 'http://localhost:3000' : window.location.origin;
 const API_STUDENTS = `${API_BASE_URL}/api/students`;
+const API_GRADE_EDIT_ACCESS = `${API_BASE_URL}/api/grade-edit-access`;
 const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR2dzgdf5bWl2KBYcGTWxjjiIk6qKQ5NWjde1eyiv0Gy0velu_8JTPdu8O8WicEJQ/pub?output=csv';
 const PERIOD_LABELS = { '1er': '1er lapso', '2do': '2do lapso', '3er': '3er lapso', Final: 'Final' };
 const SUBJECTS_BY_YEAR = window.GRADE_SUBJECTS_BY_YEAR;
@@ -47,6 +48,10 @@ const pendingMatterSubjectsBody = document.getElementById('pendingMatterSubjects
 const pendingMatterStatus = document.getElementById('pendingMatterStatus');
 const addPendingMatterSubjectButton = document.getElementById('addPendingMatterSubject');
 const savePendingMatterSubjectsButton = document.getElementById('savePendingMatterSubjects');
+const gradeEditAccessPanel = document.getElementById('gradeEditAccessPanel');
+const gradeEditTeacherSelect = document.getElementById('gradeEditTeacherSelect');
+const gradeEditAccessButton = document.getElementById('gradeEditAccessButton');
+const gradeEditAccessStatus = document.getElementById('gradeEditAccessStatus');
 
 let currentUser;
 let students = [];
@@ -64,6 +69,10 @@ let pendingStudentId = '';
 let pendingDrafts = {};
 let pendingMatterStudentId = '';
 let pendingMatterDrafts = {};
+let gradeEditTeachers = [];
+
+const canEditSubmittedGrades = () => currentUser?.esAdmin === true
+  || currentUser?.puedeEditarNotasGuardadas === true;
 
 const canManagePendingSubjects = () => currentUser?.puedeGestionarPendientes === true
   || currentUser?.puedeCargarNotas === true
@@ -128,6 +137,81 @@ const normalizeCedula = (value) => String(value || '').toUpperCase().replace(/\D
 const setStatus = (message, type = '') => {
   statusMessage.textContent = message;
   statusMessage.className = `status${type ? ` ${type}` : ''}`;
+};
+
+const setGradeEditAccessStatus = (message, type = '') => {
+  gradeEditAccessStatus.textContent = message;
+  gradeEditAccessStatus.className = `pending-status${type ? ` ${type}` : ''}`;
+};
+
+const updateGradeEditAccessButton = () => {
+  const teacher = gradeEditTeachers.find((entry) => entry.id === gradeEditTeacherSelect.value);
+  gradeEditAccessButton.disabled = !teacher;
+  gradeEditAccessButton.textContent = teacher?.canEditSubmitted
+    ? 'Desautorizar edición'
+    : 'Autorizar edición';
+};
+
+const loadGradeEditAccess = async () => {
+  const response = await fetch(API_GRADE_EDIT_ACCESS, {
+    cache: 'no-store',
+    headers: { 'Cache-Control': 'no-cache' },
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.error || `Error ${response.status}`);
+
+  if (!currentUser.esAdmin) {
+    currentUser.puedeEditarNotasGuardadas = result.canEditSubmitted === true;
+    sessionStorage.setItem('activeUser', JSON.stringify(currentUser));
+    return;
+  }
+
+  gradeEditTeachers = Array.isArray(result.teachers) ? result.teachers : [];
+  gradeEditTeacherSelect.replaceChildren();
+  gradeEditTeachers.forEach((teacher) => {
+    const option = document.createElement('option');
+    option.value = teacher.id;
+    option.textContent = `${teacher.name || teacher.username} (${teacher.username})`;
+    gradeEditTeacherSelect.appendChild(option);
+  });
+  if (!gradeEditTeachers.length) {
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = 'No hay profesores activos';
+    gradeEditTeacherSelect.appendChild(option);
+  }
+  updateGradeEditAccessButton();
+};
+
+const toggleGradeEditAccess = async () => {
+  const teacher = gradeEditTeachers.find((entry) => entry.id === gradeEditTeacherSelect.value);
+  if (!teacher || !currentUser.esAdmin) return;
+
+  gradeEditAccessButton.disabled = true;
+  setGradeEditAccessStatus('Actualizando autorización...');
+  try {
+    const response = await fetch(API_GRADE_EDIT_ACCESS, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: teacher.id,
+        authorized: !teacher.canEditSubmitted,
+      }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || `Error ${response.status}`);
+
+    teacher.canEditSubmitted = result.authorized === true;
+    updateGradeEditAccessButton();
+    setGradeEditAccessStatus(
+      `${teacher.name || teacher.username}: edición de notas guardadas ${teacher.canEditSubmitted ? 'autorizada' : 'desautorizada'}.`,
+      'success',
+    );
+  } catch (error) {
+    console.error('No se pudo actualizar la autorización del profesor:', error);
+    updateGradeEditAccessButton();
+    setGradeEditAccessStatus(error.message || 'No se pudo actualizar la autorización.', 'error');
+  }
 };
 
 const parseCsvLine = (line) => {
@@ -708,7 +792,7 @@ const renderStudents = () => {
         input.dataset.studentId = studentId;
         input.dataset.activityId = activity.id;
         input.disabled = isActivityLockedForCurrentUser(activity)
-          || (!currentUser?.esAdmin && isStudentPeriodGradeSubmitted(student, subject, period));
+          || (!canEditSubmittedGrades() && isStudentPeriodGradeSubmitted(student, subject, period));
         input.value = draftScores[studentId]?.[activity.id] || '';
         input.setAttribute('aria-label', `Nota de ${student.name || 'estudiante'} en ${activity.name || 'actividad'}`);
         gradeCell.appendChild(input);
@@ -727,7 +811,7 @@ const renderStudents = () => {
         pointsInput.dataset.studentId = studentId;
         pointsInput.dataset.activityId = activity.id;
         pointsInput.disabled = isActivityLockedForCurrentUser(activity)
-          || (!currentUser?.esAdmin && isStudentPeriodGradeSubmitted(student, subject, period));
+          || (!canEditSubmittedGrades() && isStudentPeriodGradeSubmitted(student, subject, period));
         pointsInput.value = draftEarnedPoints[studentId]?.[activity.id] || '';
         pointsInput.setAttribute(
           'aria-label',
@@ -1422,7 +1506,7 @@ const saveGrades = async () => {
     const assessmentEntries = activities.map((activity) => {
       const existing = existingAssessments.find((entry) => String(entry.id) === activity.id) || {};
       const canEdit = !isActivityLockedForCurrentUser(activity)
-        && (currentUser?.esAdmin || !isStudentPeriodGradeSubmitted(student, subject, periodSelect.value));
+        && (canEditSubmittedGrades() || !isStudentPeriodGradeSubmitted(student, subject, periodSelect.value));
       return {
         ...existing,
         id: activity.id,
@@ -1446,7 +1530,7 @@ const saveGrades = async () => {
     });
     savedAssessments[periodSelect.value] = assessmentEntries;
     subjectGrades.assessments = savedAssessments;
-    const periodGradeIsSubmitted = !currentUser?.esAdmin
+    const periodGradeIsSubmitted = !canEditSubmittedGrades()
       && isStudentPeriodGradeSubmitted(student, subject, periodSelect.value);
     const weightedGrade = periodGradeIsSubmitted
       ? subjectGrades[periodSelect.value] ?? null
@@ -1526,7 +1610,7 @@ const saveGrades = async () => {
     const student = students.find((entry) => String(entry.id) === input.dataset.studentId);
     input.disabled = activity
       ? isActivityLockedForCurrentUser(activity)
-        || (!currentUser?.esAdmin && isStudentPeriodGradeSubmitted(student, subject, periodSelect.value))
+        || (!canEditSubmittedGrades() && isStudentPeriodGradeSubmitted(student, subject, periodSelect.value))
       : false;
   });
   studentsBody.querySelectorAll('.earned-points-input').forEach((input) => {
@@ -1534,7 +1618,7 @@ const saveGrades = async () => {
     const student = students.find((entry) => String(entry.id) === input.dataset.studentId);
     input.disabled = activity
       ? isActivityLockedForCurrentUser(activity)
-        || (!currentUser?.esAdmin && isStudentPeriodGradeSubmitted(student, subject, periodSelect.value))
+        || (!canEditSubmittedGrades() && isStudentPeriodGradeSubmitted(student, subject, periodSelect.value))
       : false;
   });
   if (recoveryAddedCount && pendingStudentId && pendingDrafts[pendingStudentId]) {
@@ -1581,6 +1665,19 @@ const initialize = async () => {
 
   document.getElementById('teacherName').textContent = currentUser.name;
   addActivityButton.hidden = !canManageActivities();
+  gradeEditAccessPanel.hidden = !currentUser.esAdmin;
+  gradeEditTeacherSelect.addEventListener('change', updateGradeEditAccessButton);
+  gradeEditAccessButton.addEventListener('click', toggleGradeEditAccess);
+  let gradeEditAccessLoadError = '';
+  if (currentUser.esAdmin) setGradeEditAccessStatus('Cargando profesores...');
+  try {
+    await loadGradeEditAccess();
+  } catch (error) {
+    console.error('No se pudo consultar la autorización para editar notas guardadas:', error);
+    gradeEditAccessLoadError = error.message || 'No se pudo verificar la autorización de edición.';
+    currentUser.puedeEditarNotasGuardadas = false;
+    if (currentUser.esAdmin) setGradeEditAccessStatus(gradeEditAccessLoadError, 'error');
+  }
   const years = getAllowedYears();
   if (!years.length) {
     setStatus('Tu perfil no tiene años escolares asignados.', 'error');
@@ -1807,6 +1904,7 @@ const initialize = async () => {
     loadGradeContext();
     setStatus(error.message || 'No se pudieron  cargar los estudiantes.', 'error');
   }
+  if (gradeEditAccessLoadError && !currentUser.esAdmin) setStatus(gradeEditAccessLoadError, 'error');
 };
 
 initialize();

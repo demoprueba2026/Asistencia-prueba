@@ -25,7 +25,7 @@ test('rejects a teacher changing a saved grade', () => {
   assert.match(result.error, /solo un administrador/);
 });
 
-test('allows an administrator to change a saved grade', () => {
+test('allows an administrator or authorized teacher to change a saved grade', () => {
   const previous = prepareGradePatch({}, gradesWithAssessment(16), false).grades;
   const result = prepareGradePatch(previous, gradesWithAssessment(18), true);
   assert.equal(result.error, undefined);

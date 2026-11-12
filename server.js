@@ -497,6 +497,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
 app.all('/api/session', (req, res) => require('./api/session')(req, res));
+app.all('/api/grade-edit-access', (req, res) => require('./api/grade-edit-access')(req, res));
 
 app.get('/api/students', publicStudentLookup, authorizeStaff('students.read'), async (req, res) => {
   try {
@@ -660,7 +661,11 @@ app.patch('/api/students', authorizeStaff((req) => getStudentPatchPermissions(re
           });
         }
         const existingStudent = Array.isArray(existingData) ? existingData[0] : null;
-        const prepared = prepareGradePatch(existingStudent?.grades, grades, req.staffUser.esAdmin === true);
+        const prepared = prepareGradePatch(
+          existingStudent?.grades,
+          grades,
+          req.staffUser.esAdmin === true || req.staffUser.puedeEditarNotasGuardadas === true,
+        );
         if (prepared.error) return res.status(403).json({ error: prepared.error });
         changes.grades = prepared.grades;
       }
@@ -678,7 +683,11 @@ app.patch('/api/students', authorizeStaff((req) => getStudentPatchPermissions(re
       return res.status(403).json({ error: 'No tienes acceso a este año académico.' });
     }
     if (hasGrades(grades)) {
-      const prepared = prepareGradePatch(student.grades, grades, req.staffUser.esAdmin === true);
+      const prepared = prepareGradePatch(
+        student.grades,
+        grades,
+        req.staffUser.esAdmin === true || req.staffUser.puedeEditarNotasGuardadas === true,
+      );
       if (prepared.error) return res.status(403).json({ error: prepared.error });
       changes.grades = prepared.grades;
     }

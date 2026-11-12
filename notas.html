@@ -76,6 +76,14 @@
       background: #fff;
       color: #172033;
     }
+    .grade-edit-access { margin-top: 16px; padding: 16px; background: #f3f6fa; border: 1px solid #dce4ef; border-radius: 10px; }
+    .grade-edit-access h3 { margin: 0 0 6px; font-size: 1rem; }
+    .grade-edit-access p { margin: 0 0 12px; color: #4c5b70; }
+    .grade-edit-access-controls { display: grid; grid-template-columns: minmax(200px, 1fr) auto; align-items: end; gap: 12px; }
+    .grade-edit-access-controls label { display: grid; gap: 7px; font-weight: 700; }
+    .grade-edit-access-controls select { min-height: 42px; padding: 8px 10px; border: 1px solid #c8d2e0; border-radius: 7px; background: #fff; color: #172033; }
+    .grade-edit-access-controls button { min-height: 42px; padding: 8px 14px; border: 0; border-radius: 8px; background: #1668b2; color: #fff; font-weight: 700; cursor: pointer; }
+    .grade-edit-access-controls button:disabled { opacity: .6; cursor: wait; }
     .list-heading { display: flex; justify-content: space-between; align-items: end; gap: 16px; margin: 24px 0 12px; }
     .list-heading h2 { margin: 0; font-size: 1.2rem; }
     .list-heading p { margin: 4px 0 0; color: #64748b; }
@@ -185,6 +193,8 @@
       .school-header .seal { max-height: 82px; }
       .school-header h1 { font-size: 1rem; }
       .filters { grid-template-columns: 1fr; }
+      .grade-edit-access-controls { grid-template-columns: 1fr; }
+      .grade-edit-access-controls button { width: 100%; }
       .assessment-editor-heading { align-items: stretch; flex-direction: column; }
       .assessment-item { grid-template-columns: 1fr; }
       .assessment-controls { justify-content: stretch; }
@@ -263,6 +273,18 @@
           </select>
         </label>
       </div>
+
+      <section id="gradeEditAccessPanel" class="grade-edit-access" aria-labelledby="gradeEditAccessTitle" hidden>
+        <h3 id="gradeEditAccessTitle">Autorización para editar notas guardadas</h3>
+        <p>Selecciona un profesor para autorizar o retirar su permiso de edición. El profesor debe actualizar el módulo para aplicar el cambio.</p>
+        <div class="grade-edit-access-controls">
+          <label for="gradeEditTeacherSelect">Profesor
+            <select id="gradeEditTeacherSelect"></select>
+          </label>
+          <button id="gradeEditAccessButton" type="button" disabled>Autorizar edición</button>
+        </div>
+        <p id="gradeEditAccessStatus" class="pending-status" role="status" aria-live="polite"></p>
+      </section>
 
       <section class="assessment-editor" aria-labelledby="assessmentHeading">
         <div class="assessment-editor-heading">

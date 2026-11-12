@@ -332,7 +332,11 @@ module.exports = async function handler(req, res) {
           });
         }
         const existingStudent = Array.isArray(existingData) ? existingData[0] : null;
-        const prepared = prepareGradePatch(existingStudent?.grades, grades, staffUser.esAdmin === true);
+        const prepared = prepareGradePatch(
+          existingStudent?.grades,
+          grades,
+          staffUser.esAdmin === true || staffUser.puedeEditarNotasGuardadas === true,
+        );
         if (prepared.error) return res.status(403).json({ error: prepared.error });
         gradesToSave = prepared.grades;
       }
