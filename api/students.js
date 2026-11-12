@@ -15,6 +15,7 @@ const {
   getStudentIdentifierVariants,
   studentIdentifierMatches,
 } = require('../lib/student-identifier');
+const { prepareGradePatch } = require('../lib/grade-submissions');
 
 let rawUrl = (
   process.env.SUPABASE_URL ||
@@ -318,6 +319,24 @@ module.exports = async function handler(req, res) {
         return res.status(403).json({ error: 'Esta cuenta no tiene años académicos asignados.' });
       }
 
+      const yearFilter = staffUser.esAdmin ? '' : `&year=in.(${allowedYears.join(',')})`;
+      let gradesToSave = grades;
+      if (hasGrades(grades)) {
+        const existingResponse = await supabaseFetch(
+          `/students?id=eq.${encodeURIComponent(String(id))}${yearFilter}&select=grades`,
+        );
+        const existingData = await existingResponse.json().catch(() => []);
+        if (!existingResponse.ok) {
+          return res.status(existingResponse.status).json({
+            error: getSupabaseError(existingData, 'No se pudieron verificar las notas guardadas.'),
+          });
+        }
+        const existingStudent = Array.isArray(existingData) ? existingData[0] : null;
+        const prepared = prepareGradePatch(existingStudent?.grades, grades, staffUser.esAdmin === true);
+        if (prepared.error) return res.status(403).json({ error: prepared.error });
+        gradesToSave = prepared.grades;
+      }
+
       const changes = {};
       if (name !== undefined) changes.name = name;
       if (cedula !== undefined) changes.cedula = cedula;
@@ -328,7 +347,7 @@ module.exports = async function handler(req, res) {
       if (paymentStatus !== undefined) changes.payment_status = paymentStatus;
       if (paidAmount !== undefined) changes.paid_amount = safeNumber(paidAmount, 0);
       if (payments !== undefined) changes.payments = payments;
-      if (grades !== undefined && typeof grades === 'object' && grades !== null) changes.grades = grades;
+      if (hasGrades(grades)) changes.grades = gradesToSave;
       if (body.pendingSubjects !== undefined) changes.pending_subjects = body.pendingSubjects;
       if (body.pending_subjects !== undefined) changes.pending_subjects = body.pending_subjects;
       if (body.matterPendingSubjects !== undefined) changes.matter_pending_subjects = body.matterPendingSubjects;
@@ -337,7 +356,6 @@ module.exports = async function handler(req, res) {
       if (attendanceByDate !== undefined) changes.attendance_by_date = attendanceByDate;
       if (body?.status !== undefined) changes.status = body.status;
 
-      const yearFilter = staffUser.esAdmin ? '' : `&year=in.(${allowedYears.join(',')})`;
       const response = await supabaseFetch(`/students?id=eq.${encodeURIComponent(String(id))}${yearFilter}`, {
         method: 'PATCH',
         headers: { Prefer: 'return=representation' },

@@ -18,6 +18,7 @@ const {
   normalizeStudentIdentifier,
   studentIdentifierMatches,
 } = require('./lib/student-identifier');
+const { prepareGradePatch } = require('./lib/grade-submissions');
 
 dotenv.config();
 
@@ -645,6 +646,24 @@ app.patch('/api/students', authorizeStaff((req) => getStudentPatchPermissions(re
     });
 
     if (IS_SUPABASE_CONFIGURED) {
+      if (hasGrades(grades)) {
+        const yearFilter = Array.isArray(allowedYears)
+          ? `&year=in.(${allowedYears.join(',')})`
+          : '';
+        const existingResponse = await supabaseFetch(
+          `/students?id=eq.${encodeURIComponent(id)}${yearFilter}&select=grades`,
+        );
+        const existingData = await existingResponse.json().catch(() => []);
+        if (!existingResponse.ok) {
+          return res.status(existingResponse.status).json({
+            error: existingData.message || existingData.error || 'No se pudieron verificar las notas guardadas.',
+          });
+        }
+        const existingStudent = Array.isArray(existingData) ? existingData[0] : null;
+        const prepared = prepareGradePatch(existingStudent?.grades, grades, req.staffUser.esAdmin === true);
+        if (prepared.error) return res.status(403).json({ error: prepared.error });
+        changes.grades = prepared.grades;
+      }
       const updated = await patchStudentToSupabase(id, changes, allowedYears);
       syncLocalStudent(updated);
       return res.json(filterStudentFieldsForUser(updated, req.staffUser));
@@ -657,6 +676,11 @@ app.patch('/api/students', authorizeStaff((req) => getStudentPatchPermissions(re
     }
     if (!isYearAllowed(req.staffUser, student.year)) {
       return res.status(403).json({ error: 'No tienes acceso a este año académico.' });
+    }
+    if (hasGrades(grades)) {
+      const prepared = prepareGradePatch(student.grades, grades, req.staffUser.esAdmin === true);
+      if (prepared.error) return res.status(403).json({ error: prepared.error });
+      changes.grades = prepared.grades;
     }
     if (name !== undefined) student.name = name;
     if (cedula !== undefined) student.cedula = cedula;

@@ -228,9 +228,25 @@ const getAllowedYears = () => {
 };
 
 const canManageActivities = () => currentUser?.puedeGestionarActividades === true
+  || currentUser?.esAdmin === true
   || normalizeText(currentUser?.name) === 'prof: andy';
 
 const isActivityLockedForCurrentUser = (activity) => activity.locked === true && !canManageActivities();
+
+const isStudentPeriodGradeSubmitted = (student, subject, period) => {
+  const subjectGrades = student?.grades?.[subject?.id] || {};
+  const hasSavedPeriodGrade = subjectGrades[period] !== null
+    && subjectGrades[period] !== undefined
+    && subjectGrades[period] !== '';
+  return hasSavedPeriodGrade || (
+    Array.isArray(subjectGrades.assessments?.[period])
+    && subjectGrades.assessments[period].some((entry) => (
+      entry.submitted === true
+      || (entry.score !== null && entry.score !== undefined && entry.score !== '')
+      || (entry.earnedPoints !== null && entry.earnedPoints !== undefined && entry.earnedPoints !== '')
+    ))
+  );
+};
 
 const getSubjectsForYear = (year) => {
   const subjects = SUBJECTS_BY_YEAR[Number(year)] || [];
@@ -691,7 +707,8 @@ const renderStudents = () => {
         input.inputMode = 'decimal';
         input.dataset.studentId = studentId;
         input.dataset.activityId = activity.id;
-        input.disabled = isActivityLockedForCurrentUser(activity);
+        input.disabled = isActivityLockedForCurrentUser(activity)
+          || (!currentUser?.esAdmin && isStudentPeriodGradeSubmitted(student, subject, period));
         input.value = draftScores[studentId]?.[activity.id] || '';
         input.setAttribute('aria-label', `Nota de ${student.name || 'estudiante'} en ${activity.name || 'actividad'}`);
         gradeCell.appendChild(input);
@@ -709,7 +726,8 @@ const renderStudents = () => {
         pointsInput.inputMode = 'decimal';
         pointsInput.dataset.studentId = studentId;
         pointsInput.dataset.activityId = activity.id;
-        pointsInput.disabled = isActivityLockedForCurrentUser(activity);
+        pointsInput.disabled = isActivityLockedForCurrentUser(activity)
+          || (!currentUser?.esAdmin && isStudentPeriodGradeSubmitted(student, subject, period));
         pointsInput.value = draftEarnedPoints[studentId]?.[activity.id] || '';
         pointsInput.setAttribute(
           'aria-label',
@@ -1403,7 +1421,8 @@ const saveGrades = async () => {
       : [];
     const assessmentEntries = activities.map((activity) => {
       const existing = existingAssessments.find((entry) => String(entry.id) === activity.id) || {};
-      const canEdit = !isActivityLockedForCurrentUser(activity);
+      const canEdit = !isActivityLockedForCurrentUser(activity)
+        && (currentUser?.esAdmin || !isStudentPeriodGradeSubmitted(student, subject, periodSelect.value));
       return {
         ...existing,
         id: activity.id,
@@ -1500,11 +1519,19 @@ const saveGrades = async () => {
   }
   studentsBody.querySelectorAll('.grade-input').forEach((input) => {
     const activity = activities.find((entry) => entry.id === input.dataset.activityId);
-    input.disabled = activity ? isActivityLockedForCurrentUser(activity) : false;
+    const student = students.find((entry) => String(entry.id) === input.dataset.studentId);
+    input.disabled = activity
+      ? isActivityLockedForCurrentUser(activity)
+        || (!currentUser?.esAdmin && isStudentPeriodGradeSubmitted(student, subject, periodSelect.value))
+      : false;
   });
   studentsBody.querySelectorAll('.earned-points-input').forEach((input) => {
     const activity = activities.find((entry) => entry.id === input.dataset.activityId);
-    input.disabled = activity ? isActivityLockedForCurrentUser(activity) : false;
+    const student = students.find((entry) => String(entry.id) === input.dataset.studentId);
+    input.disabled = activity
+      ? isActivityLockedForCurrentUser(activity)
+        || (!currentUser?.esAdmin && isStudentPeriodGradeSubmitted(student, subject, periodSelect.value))
+      : false;
   });
   if (recoveryAddedCount && pendingStudentId && pendingDrafts[pendingStudentId]) {
     renderPendingAssignments();
@@ -1526,6 +1553,7 @@ const saveGrades = async () => {
     originalScores = copyJson(draftScores);
     originalEarnedPoints = copyJson(draftEarnedPoints);
     originalManualEarnedPoints = copyJson(manualEarnedPoints);
+    loadGradeContext();
     const recoveryMessage = recoveryAddedCount
       ? ` ${recoveryAddedCount} estudiante(s) con nota menor a 10 se registraron en Recuperación.`
       : '';
